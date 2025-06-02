@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster as ShadToaster } from '@/components/ui/toaster'; // Renamed to avoid conflict if you use useToast hook directly
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -42,7 +42,7 @@ import AdminReportsPage from '@/pages/admin/reports';
 // Components
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import ProtectedRoute from '@/components/auth/protected-route';
-import { adminRoles, cashierRoles } from '@/lib/auth';
+import { adminRoles } from '@/lib/auth'; // cashierRoles was unused, removed for brevity unless needed
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -54,20 +54,24 @@ function App() {
         const { data, error } = await supabase.rpc('get_settings');
         
         if (!error && data) {
-          setSettings(data as AppSettings);
+          const appSettings = data as AppSettings; // Explicitly type the fetched data
+          setSettings(appSettings);
           
           // Apply primary color to CSS variables
-          if (data.primary_color) {
-            document.documentElement.style.setProperty('--primary-color', data.primary_color);
+          // This assumes appSettings.primary_color is a valid CSS color string (e.g., "hsl(220, 70%, 50%)", "#RRGGBB")
+          if (appSettings.primary_color) {
+            document.documentElement.style.setProperty('--primary-color', appSettings.primary_color);
           }
           
           // Set page title from settings
-          if (data.logo_text) {
-            document.title = data.logo_text;
+          if (appSettings.logo_text) {
+            document.title = appSettings.logo_text;
           }
+        } else if (error) {
+          console.error('Error loading settings:', error.message);
         }
       } catch (error) {
-        console.error('Error loading settings:', error);
+        console.error('Critical error loading settings:', error);
       } finally {
         setIsLoading(false);
       }
@@ -134,66 +138,44 @@ function App() {
               {/* Admin Routes */}
               <Route path="admin" element={
                 <ProtectedRoute allowedRoles={adminRoles}>
-                  <Navigate to="/admin/dashboard" replace />
+                  {/* Redirect to admin dashboard if accessing /admin directly */}
+                  <Navigate to="/admin/dashboard" replace /> 
                 </ProtectedRoute>
               } />
               
-              <Route path="admin">
+              <Route path="admin"> {/* Nested admin routes for clarity */}
                 <Route path="dashboard" element={
-                  <ProtectedRoute allowedRoles={adminRoles}>
-                    <AdminDashboardPage />
-                  </ProtectedRoute>
+                  <ProtectedRoute allowedRoles={adminRoles}><AdminDashboardPage /></ProtectedRoute>
                 } />
-                
                 <Route path="users" element={
-                  <ProtectedRoute allowedRoles={adminRoles}>
-                    <AdminUsersPage />
-                  </ProtectedRoute>
+                  <ProtectedRoute allowedRoles={adminRoles}><AdminUsersPage /></ProtectedRoute>
                 } />
-                
                 <Route path="products" element={
-                  <ProtectedRoute allowedRoles={adminRoles}>
-                    <AdminProductsPage />
-                  </ProtectedRoute>
+                  <ProtectedRoute allowedRoles={adminRoles}><AdminProductsPage /></ProtectedRoute>
                 } />
-                
                 <Route path="coupons" element={
-                  <ProtectedRoute allowedRoles={adminRoles}>
-                    <AdminCouponsPage />
-                  </ProtectedRoute>
+                  <ProtectedRoute allowedRoles={adminRoles}><AdminCouponsPage /></ProtectedRoute>
                 } />
-                
                 <Route path="settings" element={
-                  <ProtectedRoute allowedRoles={adminRoles}>
-                    <AdminSettingsPage />
-                  </ProtectedRoute>
+                  <ProtectedRoute allowedRoles={adminRoles}><AdminSettingsPage /></ProtectedRoute>
                 } />
-                
                 <Route path="device-requests" element={
-                  <ProtectedRoute allowedRoles={adminRoles}>
-                    <AdminDeviceRequestsPage />
-                  </ProtectedRoute>
+                  <ProtectedRoute allowedRoles={adminRoles}><AdminDeviceRequestsPage /></ProtectedRoute>
                 } />
-                
                 <Route path="active-shifts" element={
-                  <ProtectedRoute allowedRoles={adminRoles}>
-                    <AdminActiveShiftsPage />
-                  </ProtectedRoute>
+                  <ProtectedRoute allowedRoles={adminRoles}><AdminActiveShiftsPage /></ProtectedRoute>
                 } />
-                
                 <Route path="reports" element={
-                  <ProtectedRoute allowedRoles={adminRoles}>
-                    <AdminReportsPage />
-                  </ProtectedRoute>
+                  <ProtectedRoute allowedRoles={adminRoles}><AdminReportsPage /></ProtectedRoute>
                 } />
               </Route>
             </Route>
             
             {/* Redirect any unknown routes to home */}
-            <Route path="*" element={<Navigate to="/\" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           
-          <Toaster />
+          <ShadToaster />
         </AuthProvider>
       </Router>
     </ThemeProvider>
