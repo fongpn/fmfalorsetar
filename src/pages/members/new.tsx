@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect for potential future use, though not strictly needed for this fix
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -27,7 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { validateNRIC } from '@/lib/utils';
-import type { MembershipType } from '@/types';
+import type { MembershipType, PaymentMethod } from '@/types'; // Added PaymentMethod
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -36,6 +36,7 @@ const formSchema = z.object({
   phone: z.string().optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
   membership_type: z.enum(['standard', 'premium', 'family', 'student'] as const),
+  paymentMethod: z.enum(['cash', 'qr', 'bank_transfer'] as const), // Added paymentMethod
   notes: z.string().optional().or(z.literal('')),
 });
 
@@ -54,14 +55,42 @@ const NewMemberPage = () => {
       phone: '',
       address: '',
       membership_type: 'standard',
+      paymentMethod: 'cash', // Default payment method
       notes: '',
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to register a new member.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsLoading(true);
 
     try {
+      // Get active shift for the current user
+      const { data: shiftData, error: shiftError } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('user_id', user.id)
+        .is('end_time', null)
+        .single();
+
+      if (shiftError || !shiftData) {
+        toast({
+          title: 'No Active Shift',
+          description: 'An active shift is required to register a new member and record payment.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+      const activeShiftId = shiftData.id;
+
       // Get membership plan details
       const { data: planData, error: planError } = await supabase
         .from('membership_plans')
@@ -70,28 +99,44 @@ const NewMemberPage = () => {
         .eq('active', true)
         .single();
 
-      if (planError) throw planError;
+      if (planError || !planData) {
+        toast({
+          title: 'Error',
+          description: 'Could not retrieve membership plan details. Please try again.',
+          variant: 'destructive',
+        });
+        throw planError || new Error('Membership plan not found');
+      }
 
       const startDate = new Date();
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + planData.months + planData.free_months);
+      const totalAmountPaid = planData.price + planData.registration_fee;
 
       // Insert new member
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
-          ...values,
-          member_id: await supabase.rpc('generate_member_id'),
+          name: values.name,
+          nric: values.nric,
+          email: values.email || null,
+          phone: values.phone || null,
+          address: values.address || null,
+          membership_type: values.membership_type,
+          notes: values.notes || null,
+          member_id: await supabase.rpc('generate_member_id'), // Assumes this RPC exists and works
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
           status: 'active',
-          registration_fee_paid: false,
-          created_by: user!.id,
+          registration_fee_paid: true, // Corrected: Fee is paid now
+          created_by: user.id,
         })
         .select()
         .single();
 
-      if (memberError) throw memberError;
+      if (memberError || !memberData) {
+        throw memberError || new Error('Failed to insert member data.');
+      }
 
       // Add to membership history
       const { error: historyError } = await supabase
@@ -101,13 +146,27 @@ const NewMemberPage = () => {
           membership_type: values.membership_type as MembershipType,
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
-          payment_amount: planData.price + planData.registration_fee,
-          payment_method: 'cash',
+          payment_amount: totalAmountPaid, // Reflects total amount for this initial transaction
+          payment_method: values.paymentMethod, // Use selected payment method
           is_renewal: false,
-          created_by: user!.id,
+          created_by: user.id,
         });
 
       if (historyError) throw historyError;
+
+      // Record payment in the payments table
+      const { error: paymentRecordError } = await supabase
+        .from('payments')
+        .insert({
+          member_id: memberData.id,
+          amount: totalAmountPaid,
+          method: values.paymentMethod,
+          payment_for: 'initial_registration_membership', // Or a more descriptive term
+          shift_id: activeShiftId,
+          created_by: user.id,
+        });
+
+      if (paymentRecordError) throw paymentRecordError;
 
       toast({
         title: 'Success',
@@ -117,9 +176,10 @@ const NewMemberPage = () => {
       navigate(`/members/${memberData.id}`);
     } catch (error) {
       console.error('Error registering new member:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to register new member';
       toast({
         title: 'Error',
-        description: 'Failed to register new member',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -229,14 +289,42 @@ const NewMemberPage = () => {
               )}
             />
 
+            {/* Added Payment Method Field */}
+            <FormField
+              control={form.control}
+              name="paymentMethod"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Method</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isLoading}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="qr">QR Payment</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <FormField
               control={form.control}
               name="address"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="md:col-span-2"> {/* Adjusted for layout */}
                   <FormLabel>Address (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} disabled={isLoading} />
+                    <Textarea {...field} disabled={isLoading} rows={3} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -251,7 +339,7 @@ const NewMemberPage = () => {
               <FormItem>
                 <FormLabel>Notes (Optional)</FormLabel>
                 <FormControl>
-                  <Textarea {...field} disabled={isLoading} />
+                  <Textarea {...field} disabled={isLoading} rows={3} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -262,7 +350,7 @@ const NewMemberPage = () => {
             <Button type="submit" disabled={isLoading}>
               {isLoading ? (
                 <div className="flex items-center">
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   <span>Registering</span>
                 </div>
               ) : (
