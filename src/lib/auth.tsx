@@ -25,7 +25,6 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -48,7 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await signOut();
         } else if (data) {
           setUser(data as User);
-          setIsInitialized(true);
         }
       }
       
@@ -91,11 +89,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .eq('id', session.user.id);
               
             setUser(data as User);
-            setIsInitialized(true);
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
-          setIsInitialized(false);
           navigate('/login');
         }
         setIsLoading(false);
@@ -170,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{
       user,
-      isLoading: isLoading || !isInitialized,
+      isLoading,
       signIn,
       signOut,
       resetPassword,

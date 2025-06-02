@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster as ShadToaster } from '@/components/ui/toaster'; // Renamed to avoid conflict if you use useToast hook directly
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import type { AppSettings } from '@/types';
-import LoadingSpinner from '@/components/ui/loading-spinner';
 
 function AppContent() {
   const { isLoading: authLoading } = useAuth();
@@ -46,7 +45,7 @@ function AppContent() {
   if (authLoading || isSettingsLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background">
-        <LoadingSpinner size="lg" />
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
