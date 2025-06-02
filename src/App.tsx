@@ -131,7 +131,7 @@ function AppContent() {
       </Route>
       
       {/* Redirect any unknown routes to home */}
-      <Route path="*" element={<Navigate to="/\" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
@@ -170,14 +170,10 @@ import AdminActiveShiftsPage from '@/pages/admin/active-shifts';
 import AdminReportsPage from '@/pages/admin/reports';
 
 // Components
-import LoadingSpinner from '@/components/ui/loading-spinner';
 import ProtectedRoute from '@/components/auth/protected-route';
 import { adminRoles } from '@/lib/auth'; // cashierRoles was unused, removed for brevity unless needed
 
 function App() {
-          const appSettings = data as AppSettings; // Explicitly type the fetched data
-          setSettings(appSettings);
-          
   return (
     <ThemeProvider defaultTheme="light" storageKey="membership-app-theme">
       <Router>
