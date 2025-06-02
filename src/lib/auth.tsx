@@ -25,14 +25,13 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchUser = async () => {
-      setIsLoading(true);
-      
       // Check if user is authenticated
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -49,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await signOut();
         } else if (data) {
           setUser(data as User);
+          setIsInitialized(true);
         }
       }
       
@@ -60,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        setIsLoading(true);
         if (event === 'SIGNED_IN' && session) {
           // Fetch user data when signed in
           const { data, error } = await supabase
@@ -90,11 +91,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .eq('id', session.user.id);
               
             setUser(data as User);
+            setIsInitialized(true);
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          setIsInitialized(false);
           navigate('/login');
         }
+        setIsLoading(false);
       }
     );
 
@@ -166,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{
       user,
-      isLoading,
+      isLoading: isLoading || !isInitialized,
       signIn,
       signOut,
       resetPassword,
