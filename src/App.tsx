@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import type { AppSettings } from '@/types';
+import { SettingsProvider } from '@/contexts/SettingsContext';
 
 function AppContent() {
   const { isLoading: authLoading } = useAuth();
@@ -76,6 +77,14 @@ function AppContent() {
           <Route path=":id/renew" element={<RenewMembershipPage />} />
         </Route>
         
+        {/* Coupons */}
+        <Route path="coupons">
+          <Route index element={<CouponsListPage />} />
+          <Route path="new" element={<NewCouponPage />} />
+          <Route path=":id" element={<CouponDetailsPage />} />
+          <Route path=":id/edit" element={<EditCouponPage />} />
+        </Route>
+        
         {/* Validate */}
         <Route path="validate" element={<ValidateMemberPage />} />
         
@@ -95,13 +104,12 @@ function AppContent() {
         <Route path="reports" element={<ReportsPage />} />
         
         {/* Admin Routes */}
-        <Route path="admin" element={
-          <ProtectedRoute allowedRoles={adminRoles}>
-            <Navigate to="/admin/dashboard" replace /> 
-          </ProtectedRoute>
-        } />
-        
         <Route path="admin">
+          <Route index element={
+            <ProtectedRoute allowedRoles={adminRoles}>
+              <Navigate to="/admin/dashboard" replace />
+            </ProtectedRoute>
+          } />
           <Route path="dashboard" element={
             <ProtectedRoute allowedRoles={adminRoles}><AdminDashboardPage /></ProtectedRoute>
           } />
@@ -125,6 +133,9 @@ function AppContent() {
           } />
           <Route path="reports" element={
             <ProtectedRoute allowedRoles={adminRoles}><AdminReportsPage /></ProtectedRoute>
+          } />
+          <Route path="import-members" element={
+            <ProtectedRoute allowedRoles={adminRoles}><MemberImportPage /></ProtectedRoute>
           } />
         </Route>
       </Route>
@@ -167,21 +178,30 @@ import AdminSettingsPage from '@/pages/admin/settings';
 import AdminDeviceRequestsPage from '@/pages/admin/device-requests';
 import AdminActiveShiftsPage from '@/pages/admin/active-shifts';
 import AdminReportsPage from '@/pages/admin/reports';
+import MemberImportPage from '@/pages/admin/import-members';
 
 // Components
 import ProtectedRoute from '@/components/auth/protected-route';
 import { adminRoles } from '@/lib/auth'; // cashierRoles was unused, removed for brevity unless needed
 
+// Add imports at the top with other imports
+import CouponsListPage from '@/pages/coupons/list';
+import NewCouponPage from '@/pages/coupons/new';
+import CouponDetailsPage from '@/pages/coupons/details';
+import EditCouponPage from '@/pages/coupons/edit';
+
 function App() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="membership-app-theme">
-      <Router>
-        <AuthProvider>
-          <AppContent />
-          <ShadToaster />
-        </AuthProvider>
-      </Router>
-    </ThemeProvider>
+    <SettingsProvider>
+      <ThemeProvider defaultTheme="light" storageKey="membership-app-theme">
+        <Router>
+          <AuthProvider>
+            <AppContent />
+            <ShadToaster />
+          </AuthProvider>
+        </Router>
+      </ThemeProvider>
+    </SettingsProvider>
   );
 }
 

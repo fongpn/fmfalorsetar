@@ -34,7 +34,7 @@ DECLARE
   admin_role text;
 BEGIN
   -- Get the role of the requesting admin
-  SELECT role INTO admin_role FROM users WHERE id = admin_id;
+  SELECT u.role INTO admin_role FROM users u WHERE u.id = admin_id;
   
   -- Return users based on admin role
   RETURN QUERY

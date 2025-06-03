@@ -1,89 +1,110 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
-import { formatDateTime } from '@/lib/utils';
-import { Shield, Check, X } from 'lucide-react';
-import type { DeviceAuthRequest } from '@/types';
+import LoadingSpinner from '@/components/ui/loading-spinner';
+import type { DeviceAuthorizationRequest } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+interface DeviceRequestWithUser extends DeviceAuthorizationRequest {
+  users: {
+    email: string;
+    name: string;
+  };
+}
 
 const DeviceRequestsPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [requests, setRequests] = useState<DeviceAuthRequest[]>([]);
+  const [requests, setRequests] = useState<DeviceRequestWithUser[]>([]);
+
+  const fetchRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('device_authorization_requests')
+        .select(`
+          *,
+          users!device_authorization_requests_user_id_fkey (
+            email,
+            name
+          )
+        `)
+        .order('requested_at', { ascending: false });
+
+      if (error) throw error;
+      setRequests(data as DeviceRequestWithUser[]);
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load device requests',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('device_authorization_requests')
-          .select(`
-            *,
-            users!device_authorization_requests_user_id_fkey (
-              email,
-              name
-            )
-          `)
-          .order('requested_at', { ascending: false });
-
-        if (error) throw error;
-        setRequests(data as DeviceAuthRequest[]);
-      } catch (error) {
-        console.error('Error fetching device requests:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load device requests',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchRequests();
-
-    // Subscribe to changes
-    const subscription = supabase
-      .channel('device_requests_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'device_authorization_requests',
-        },
-        () => {
-          fetchRequests();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [toast]);
+  }, []);
 
   const handleApprove = async (requestId: string) => {
     try {
-      const { error } = await supabase.rpc('execute_approve_device_request', {
-        request_id: requestId,
-        admin_id: user!.id,
-      });
+      // First get the request details
+      const { data: request, error: fetchError } = await supabase
+        .from('device_authorization_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
+
+      // Update request status
+      const { error: updateError } = await supabase
+        .from('device_authorization_requests')
+        .update({
+          status: 'approved',
+          processed_at: new Date().toISOString(),
+          processed_by: user?.id
+        })
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      // Add to authorized devices
+      const { error: insertError } = await supabase
+        .from('authorized_devices')
+        .insert({
+          user_id: request.user_id,
+          browser: request.browser,
+          os: request.os,
+          device: request.device,
+          timestamp: request.timestamp,
+          authorized_at: new Date().toISOString(),
+          authorized_by: user?.id
+        });
+
+      if (insertError) throw insertError;
 
       toast({
         title: 'Success',
         description: 'Device request approved',
       });
 
-      // Update will come through subscription
+      fetchRequests();
     } catch (error) {
-      console.error('Error approving device request:', error);
+      console.error('Error approving request:', error);
       toast({
         title: 'Error',
         description: 'Failed to approve device request',
@@ -99,7 +120,7 @@ const DeviceRequestsPage = () => {
         .update({
           status: 'denied',
           processed_at: new Date().toISOString(),
-          processed_by: user!.id,
+          processed_by: user?.id
         })
         .eq('id', requestId);
 
@@ -110,9 +131,9 @@ const DeviceRequestsPage = () => {
         description: 'Device request denied',
       });
 
-      // Update will come through subscription
+      fetchRequests();
     } catch (error) {
-      console.error('Error denying device request:', error);
+      console.error('Error denying request:', error);
       toast({
         title: 'Error',
         description: 'Failed to deny device request',
@@ -121,87 +142,88 @@ const DeviceRequestsPage = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Device Requests</h1>
-
-      {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <Card key={i} className="p-4">
-              <Skeleton className="h-6 w-1/4 mb-2" />
-              <Skeleton className="h-4 w-1/3" />
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {requests.map((request) => (
-            <Card key={request.id} className="p-4">
-              <CardContent className="p-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold">
-                        {request.users.name || request.users.email}
-                      </h3>
-                      <Badge
-                        variant={
-                          request.status === 'pending'
-                            ? 'outline'
-                            : request.status === 'approved'
-                            ? 'default'
-                            : 'secondary'
-                        }
-                      >
-                        <Shield className="w-3 h-3 mr-1" />
-                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                      </Badge>
+    <div className="container mx-auto py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Device Authorization Requests</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Device</TableHead>
+                <TableHead>Browser</TableHead>
+                <TableHead>OS</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Requested At</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {requests.map((request) => (
+                <TableRow key={request.id}>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{request.users?.name || "Unknown"}</div>
+                      <div className="text-sm text-gray-500">{request.users?.email}</div>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {request.browser} on {request.os} ({request.device})
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Requested: {formatDateTime(request.requested_at)}
-                    </p>
-                    {request.processed_at && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Processed: {formatDateTime(request.processed_at)}
-                      </p>
+                  </TableCell>
+                  <TableCell>{request.device}</TableCell>
+                  <TableCell>{request.browser}</TableCell>
+                  <TableCell>{request.os}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        request.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : request.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(request.requested_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    {request.status === "pending" && (
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleApprove(request.id)}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleDeny(request.id)}
+                        >
+                          Deny
+                        </Button>
+                      </div>
                     )}
-                  </div>
-                  {request.status === 'pending' && (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleApprove(request.id)}
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Approve
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeny(request.id)}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Deny
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {requests.length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              No device requests found
-            </div>
-          )}
-        </div>
-      )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -18,6 +18,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import Logo from '@/components/Logo';
+import { useSettings } from '@/contexts/SettingsContext';
 
 // Form validation schema
 const formSchema = z.object({
@@ -29,6 +31,7 @@ const LoginPage = () => {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { settings } = useSettings();
   const [isLoading, setIsLoading] = useState(false);
   const [appSettings, setAppSettings] = useState<{ logo_text?: string; logo_icon?: string } | null>(null);
 
@@ -63,9 +66,11 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
+      console.log('Attempting to sign in...');
       const { error } = await signIn(values.email, values.password);
 
       if (error) {
+        console.error('Sign in error:', error);
         toast({
           title: 'Authentication failed',
           description: error,
@@ -74,8 +79,10 @@ const LoginPage = () => {
         return;
       }
 
+      console.log('Sign in successful, waiting for redirect...');
       // Successful login will redirect via the AuthProvider
     } catch (error) {
+      console.error('Unexpected error during sign in:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred',
@@ -90,19 +97,17 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
       <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
         <div className="text-center">
-          <div className="flex justify-center">
-            {appSettings?.logo_icon ? (
-              <span className="text-3xl">{appSettings.logo_icon}</span>
-            ) : (
-              <ShieldCheck className="h-12 w-12 text-primary" />
-            )}
+          <div className="flex justify-center mb-2">
+            <Logo className="h-32 w-56" />
           </div>
-          <h2 className="mt-4 text-3xl font-bold text-gray-900 dark:text-gray-100">
-            {appSettings?.logo_text || 'Membership App'}
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Sign in to your account
-          </p>
+          {!settings?.logo_url && (
+            <h2 className="mt-4 text-3xl font-bold text-gray-900 dark:text-gray-100">
+              {settings?.logo_text || 'Membership App'}
+            </h2>
+          )}
+          <p className="mt-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
+  Membership Management System
+</p>
         </div>
 
         <Form {...form}>
@@ -116,7 +121,7 @@ const LoginPage = () => {
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="your.email@example.com"
+                      placeholder="Enter E-mail Provided"
                       {...field}
                       disabled={isLoading}
                     />
@@ -133,12 +138,6 @@ const LoginPage = () => {
                 <FormItem>
                   <div className="flex items-center justify-between">
                     <FormLabel>Password</FormLabel>
-                    <Link
-                      to="/forgot-password"
-                      className="text-sm text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </Link>
                   </div>
                   <FormControl>
                     <Input
@@ -160,7 +159,7 @@ const LoginPage = () => {
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   <span>Signing in</span>
                 </div>
               ) : (

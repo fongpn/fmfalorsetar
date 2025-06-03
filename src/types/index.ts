@@ -181,6 +181,7 @@ export interface AppSettings {
   adult_coupon_price: number;
   youth_coupon_price: number;
   coupon_max_uses: number;
+  grace_period_days: number;
 }
 
 export interface DateRange {
@@ -228,4 +229,25 @@ export interface AttendanceReport {
   members: number;
   walkIns: number;
   total: number;
+}
+
+export interface DeviceAuthorizationRequest {
+  id: string;
+  user_id: string;
+  browser: string;
+  os: string;
+  device: string;
+  timestamp: string;
+  requested_at: string;
+  status: 'pending' | 'approved' | 'denied';
+  ip: string | null;
+  location: string | null;
+  processed_at: string | null;
+  processed_by: string | null;
+  created_at: string;
+  updated_at?: string;
+  users?: {
+    email: string;
+    name: string;
+  };
 }

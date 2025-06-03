@@ -33,6 +33,7 @@ import { useToast } from '@/components/ui/use-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import type { Member, MembershipPlan, MembershipType } from '@/types';
+import { addDays, differenceInDays, isAfter } from 'date-fns';
 
 const formSchema = z.object({
   membership_type: z.enum(['standard', 'premium', 'family', 'student'] as const),
@@ -48,6 +49,9 @@ const RenewMembershipPage = () => {
   const [member, setMember] = useState<Member | null>(null);
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
+  const [graceAccesses, setGraceAccesses] = useState<any[]>([]);
+  const [settings, setSettings] = useState<{ grace_period_days: number }>({ grace_period_days: 7 });
+  const [activeShiftId, setActiveShiftId] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,7 +68,7 @@ const RenewMembershipPage = () => {
         const { data: memberData, error: memberError } = await supabase
           .from('members')
           .select('*')
-          .eq('id', id)
+          .eq('id', id!)
           .single();
 
         if (memberError) throw memberError;
@@ -84,7 +88,7 @@ const RenewMembershipPage = () => {
         const initialPlan = plansData.find(
           plan => plan.type === memberData.membership_type
         );
-        setSelectedPlan(initialPlan || null);
+        setSelectedPlan(initialPlan as MembershipPlan | null);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({
@@ -108,16 +112,107 @@ const RenewMembershipPage = () => {
     setSelectedPlan(plan || null);
   }, [form.watch('membership_type'), plans]);
 
+  useEffect(() => {
+    // Fetch grace period days from settings (optional, default 7)
+    const fetchSettings = async () => {
+      const { data, error } = await supabase.rpc('get_settings');
+      if (!error && data) {
+        setSettings({ grace_period_days: (data as any).grace_period_days || 7 });
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    // Fetch grace period access records for this member
+    const fetchGraceAccesses = async () => {
+      if (!member) return;
+      const { data, error } = await (supabase as any)
+        .from('grace_period_access')
+        .select('*')
+        .eq('member_id', member.id);
+      if (!error && data) setGraceAccesses(data);
+    };
+    fetchGraceAccesses();
+  }, [member]);
+
+  useEffect(() => {
+    // Fetch active shift for the user
+    const fetchActiveShift = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('user_id', user.id)
+        .is('end_time', null)
+        .single();
+      if (!error && data) setActiveShiftId(data.id as string);
+    };
+    fetchActiveShift();
+  }, [user]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!selectedPlan || !member) return;
-    
     setIsLoading(true);
-
     try {
-      const startDate = new Date(member.end_date);
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + selectedPlan.months + selectedPlan.free_months);
-
+      if (!activeShiftId) {
+        toast({
+          title: 'No Active Shift',
+          description: 'You must have an active shift to renew a membership.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+      // Calculate grace period end date
+      const prevExpiry = new Date(member.end_date);
+      const gracePeriodEnd = addDays(prevExpiry, settings.grace_period_days);
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date;
+      let walkInCharges = 0;
+      let walkInChargeCount = 0;
+      // If renewal is within grace period (or before expiry)
+      if (now <= gracePeriodEnd) {
+        startDate = prevExpiry;
+        endDate = new Date(prevExpiry);
+        endDate.setMonth(endDate.getMonth() + selectedPlan.months + selectedPlan.free_months);
+        // Same date next month minus one day logic
+        endDate.setDate(endDate.getDate() - 1);
+        // Clear grace period access records
+        if (graceAccesses.length > 0) {
+          await (supabase as any)
+            .from('grace_period_access')
+            .delete()
+            .eq('member_id', member.id);
+        }
+      } else {
+        // Renewal after grace period: charge for all grace accesses
+        startDate = now;
+        endDate = new Date(now);
+        endDate.setMonth(endDate.getMonth() + selectedPlan.months + selectedPlan.free_months);
+        endDate.setDate(endDate.getDate() - 1);
+        for (const access of graceAccesses) {
+          walkInCharges += Number(access.walk_in_price);
+          walkInChargeCount++;
+          // Insert payment for each grace access
+          await supabase.from('payments').insert({
+            member_id: member.id as string,
+            amount: access.walk_in_price,
+            method: 'cash',
+            payment_for: 'grace_period_walk_in',
+            created_by: user!.id,
+            shift_id: activeShiftId,
+          });
+        }
+        // Clear grace period access records
+        if (graceAccesses.length > 0) {
+          await (supabase as any)
+            .from('grace_period_access')
+            .delete()
+            .eq('member_id', member.id);
+        }
+      }
       // Update member
       const { error: memberError } = await supabase
         .from('members')
@@ -127,10 +222,8 @@ const RenewMembershipPage = () => {
           status: 'active',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', id);
-
+        .eq('id', id!);
       if (memberError) throw memberError;
-
       // Add to membership history
       const { error: historyError } = await supabase
         .from('membership_history')
@@ -144,27 +237,27 @@ const RenewMembershipPage = () => {
           is_renewal: true,
           created_by: user!.id,
         });
-
       if (historyError) throw historyError;
-
-      // Record payment
+      // Record payment for renewal
       const { error: paymentError } = await supabase
         .from('payments')
         .insert({
-          member_id: member.id,
+          member_id: member.id as string,
           amount: selectedPlan.price,
           method: values.payment_method,
           payment_for: 'renewal',
           created_by: user!.id,
+          shift_id: activeShiftId,
         });
-
       if (paymentError) throw paymentError;
-
+      let toastMsg = 'Membership renewed successfully';
+      if (walkInChargeCount > 0) {
+        toastMsg += `. Walk-in charges for grace period: RM ${walkInCharges.toFixed(2)} (${walkInChargeCount} access${walkInChargeCount > 1 ? 'es' : ''})`;
+      }
       toast({
         title: 'Success',
-        description: 'Membership renewed successfully',
+        description: toastMsg,
       });
-
       navigate(`/members/${id}`);
     } catch (error) {
       console.error('Error renewing membership:', error);
@@ -328,7 +421,7 @@ const RenewMembershipPage = () => {
             <Button type="submit" disabled={isLoading || !selectedPlan}>
               {isLoading ? (
                 <div className="flex items-center">
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   <span>Processing</span>
                 </div>
               ) : (

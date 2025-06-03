@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 import type { User, UserRole } from '@/types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
+import { validateDeviceFingerprint } from '@/lib/fingerprint';
+import type { AppSettings } from '@/types';
 
 type AuthContextType = {
   user: User | null;
@@ -30,11 +32,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchUser = async () => {
       // Check if user is authenticated
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session?.user) {
+      if (session?.user && isMounted) {
         // Fetch user data from our users table
         const { data, error } = await supabase
           .from('users')
@@ -45,12 +49,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) {
           console.error('Error fetching user:', error);
           await signOut();
-        } else if (data) {
+        } else if (data && isMounted) {
           setUser(data as User);
         }
       }
       
-      setIsLoading(false);
+      if (isMounted) {
+        setIsLoading(false);
+      }
     };
 
     fetchUser();
@@ -58,8 +64,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setIsLoading(true);
+        // Only process SIGNED_IN and SIGNED_OUT events
+        if (event !== 'SIGNED_IN' && event !== 'SIGNED_OUT') {
+          return;
+        }
+
+        if (!isMounted) return;
+
+        console.log('Auth state changed:', event, session?.user?.id);
+        
         if (event === 'SIGNED_IN' && session) {
+          setIsLoading(true);
+          console.log('Fetching user data for:', session.user.id);
           // Fetch user data when signed in
           const { data, error } = await supabase
             .from('users')
@@ -67,12 +83,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('id', session.user.id)
             .single();
             
+          if (!isMounted) return;
+
           if (error) {
             console.error('Error fetching user:', error);
             await signOut();
           } else if (data) {
+            console.log('User data fetched:', data);
             // Check if user is active
             if (!data.active) {
+              console.log('User account is inactive');
               toast({
                 title: 'Account Inactive',
                 description: 'Your account has been deactivated. Please contact an administrator.',
@@ -82,23 +102,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               return;
             }
             
+            // Get app settings to check if fingerprinting is enabled
+            const { data: settings } = await supabase.rpc('get_settings');
+            if (!isMounted) return;
+            
+            console.log('App settings:', settings);
+            
+            const appSettings = settings as unknown as AppSettings;
+            const userRole = data.role as UserRole;
+            if (appSettings?.fingerprinting_enabled && 
+                appSettings?.fingerprinting_roles?.includes(userRole)) {
+              console.log('Device fingerprinting is enabled for role, validating device...');
+              // Validate device fingerprint
+              const result = await validateDeviceFingerprint(session.user.id);
+              if (!isMounted) return;
+              
+              console.log('Device validation result:', result);
+              
+              if (!result.isAuthorized) {
+                console.log('Device not authorized, redirecting to waiting page');
+                navigate('/waiting-for-approval', { 
+                  state: { requestId: result.requestId },
+                  replace: true 
+                });
+                return;
+              }
+            }
+            
+            console.log('Updating last login time');
             // Update last login time
             await supabase
               .from('users')
               .update({ last_login_at: new Date().toISOString() })
               .eq('id', session.user.id);
               
-            setUser(data as User);
+            if (isMounted) {
+              setUser(data as User);
+              console.log('User state updated, redirecting to dashboard');
+              navigate('/', { replace: true });
+            }
           }
         } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
           setUser(null);
           navigate('/login');
         }
-        setIsLoading(false);
+        
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     );
 
     return () => {
+      isMounted = false;
       subscription?.unsubscribe();
     };
   }, [navigate, toast]);

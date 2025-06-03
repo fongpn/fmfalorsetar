@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { formatDateTime } from '@/lib/utils';
 import { Plus, Search, UserCog, Shield, Power } from 'lucide-react';
 import type { User, UserRole } from '@/types'; // Added UserRole for clarity
+import LoadingSpinner from '@/components/ui/loading-spinner';
 
 const UsersPage = () => {
   const { user: adminUser, hasPermission } = useAuth(); // Renamed user to adminUser to avoid conflict
@@ -36,6 +37,10 @@ const UsersPage = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false); // Changed from isAddingUser for clarity
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editPassword, setEditPassword] = useState('');
+  const [isEditProcessing, setIsEditProcessing] = useState(false);
   
   const [newUser, setNewUser] = useState({
     email: '',
@@ -146,6 +151,44 @@ const UsersPage = () => {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditUser(user);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    setIsEditProcessing(true);
+    try {
+      // Call the Edge Function to update user profile
+      const { data, error } = await supabase.functions.invoke('admin-update-user-profile', {
+        body: {
+          user_id: editUser.id,
+          new_name: editUser.name,
+          new_password: editPassword || undefined, // Only update if provided
+        },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Profile Updated',
+        description: 'Your profile has been updated successfully.',
+      });
+      setIsEditModalOpen(false);
+      setEditUser(null);
+      setEditPassword('');
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update profile',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEditProcessing(false);
     }
   };
 
@@ -324,7 +367,16 @@ const UsersPage = () => {
                     >
                       {u.active ? 'Deactivate' : 'Activate'}
                     </Button>
-                    {/* Add Edit button/dialog here if needed */}
+                    {/* Edit button for self if admin or superadmin */}
+                    {adminUser && (adminUser.role === 'admin' || adminUser.role === 'superadmin') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditUser(u)}
+                      >
+                        Edit Profile
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -337,6 +389,57 @@ const UsersPage = () => {
           )}
         </div>
       )}
+      {/* Edit Profile Dialog */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>Update your profile information.</DialogDescription>
+          </DialogHeader>
+          {editUser && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="edit-name" className="text-sm font-medium">Name</label>
+                <Input
+                  id="edit-name"
+                  value={editUser.name || ''}
+                  onChange={e => setEditUser({ ...editUser, name: e.target.value })}
+                  disabled={isEditProcessing}
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-email" className="text-sm font-medium">Email</label>
+                <Input
+                  id="edit-email"
+                  value={editUser.email}
+                  onChange={e => setEditUser({ ...editUser, email: e.target.value })}
+                  disabled
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-password" className="text-sm font-medium">New Password</label>
+                <Input
+                  id="edit-password"
+                  type="password"
+                  value={editPassword}
+                  onChange={e => setEditPassword(e.target.value)}
+                  placeholder="Leave blank to keep current password"
+                  disabled={isEditProcessing}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={isEditProcessing}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isEditProcessing}>
+              {isEditProcessing ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

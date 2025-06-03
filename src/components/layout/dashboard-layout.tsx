@@ -14,6 +14,8 @@ import {
   Sun,
   Settings,
   ShieldCheck,
+  Ticket,
+  Upload,
 } from 'lucide-react';
 import { useAuth, adminRoles } from '@/lib/auth';
 import { useTheme } from '@/components/theme-provider';
@@ -110,8 +112,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ settings }) => {
 
   const mainNavItems = [
     { path: '/', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
-    { path: '/members', label: 'Members', icon: <Users className="h-5 w-5" /> },
     { path: '/validate', label: 'Validate', icon: <UserCheck className="h-5 w-5" /> },
+    { path: '/members', label: 'Members', icon: <Users className="h-5 w-5" /> },
+    { path: '/coupons', label: 'Coupons', icon: <Ticket className="h-5 w-5" /> },
     { path: '/walk-ins', label: 'Walk-Ins', icon: <ClipboardList className="h-5 w-5" /> },
     { path: '/pos', label: 'POS', icon: <ShoppingCart className="h-5 w-5" /> },
     { path: '/reports', label: 'Reports', icon: <BarChart4 className="h-5 w-5" /> },
@@ -122,6 +125,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ settings }) => {
     { path: '/admin/users', label: 'Users', icon: <Users className="h-5 w-5" /> },
     { path: '/admin/settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
     { path: '/admin/device-requests', label: 'Device Requests', icon: <ShieldCheck className="h-5 w-5" /> },
+    { path: '/admin/import-members', label: 'Import Members', icon: <Upload className="h-5 w-5" /> },
   ];
 
   return (
