@@ -17,6 +17,12 @@ import { formatDate, formatNRIC, getMemberStatusColor } from '@/lib/utils';
 import { History, RefreshCw } from 'lucide-react';
 import type { Member } from '@/types';
 import { format } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const ValidateMemberPage = () => {
   const { user } = useAuth();
@@ -29,6 +35,8 @@ const ValidateMemberPage = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [checkInHistory, setCheckInHistory] = useState<any[]>([]);
   const [statusBackground, setStatusBackground] = useState<string | undefined>(undefined);
+  const [searchResults, setSearchResults] = useState<Member[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   let memberPhotoUrl: string | undefined = undefined;
   if (member && member.photo_url) {
@@ -91,6 +99,8 @@ const ValidateMemberPage = () => {
     setIsCheckedIn(false);
     setShowHistory(false);
     setStatusBackground(undefined);
+    setSearchResults([]);
+    setShowSearchResults(false);
 
     try {
       // Search by member ID, NRIC, or name
@@ -98,45 +108,29 @@ const ValidateMemberPage = () => {
         .from('members')
         .select('*')
         .or(`member_id.eq.${searchQuery},nric.eq.${searchQuery},name.ilike.%${searchQuery}%`)
-        .single();
+        .limit(5);
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          toast({
-            title: 'Member Not Found',
-            description: 'No member found with the provided ID, NRIC, or name',
-            variant: 'destructive',
-          });
-        } else {
-          throw error;
-        }
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        toast({
+          title: 'Member Not Found',
+          description: 'No member found with the provided ID, NRIC, or name',
+          variant: 'destructive',
+        });
         return;
       }
 
-      setMember(data as Member);
-
-      // Set status background color
-      if (data.status === 'active') {
-        setStatusBackground('bg-green-100');
-      } else if (data.status === 'grace') {
-        setStatusBackground('bg-yellow-100');
-      } else if (data.status === 'expired') {
-        setStatusBackground('bg-red-100');
+      if (data.length > 1) {
+        setSearchResults(data as Member[]);
+        setShowSearchResults(true);
+        return;
       }
 
-      // Check if already checked in today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const { data: checkInData, error: checkInError } = await supabase
-        .from('check_ins')
-        .select('*')
-        .eq('member_id', data.id)
-        .gte('check_in_time', today.toISOString())
-        .maybeSingle();
-
-      if (checkInError) throw checkInError;
-      setIsCheckedIn(!!checkInData);
+      // If only one result, proceed with showing member details
+      await handleMemberSelect(data[0] as Member);
     } catch (error) {
       console.error('Error searching member:', error);
       toast({
@@ -147,6 +141,35 @@ const ValidateMemberPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleMemberSelect = async (selectedMember: Member) => {
+    setMember(selectedMember);
+    setShowSearchResults(false);
+    setSearchResults([]);
+
+    // Set status background color
+    if (selectedMember.status === 'active') {
+      setStatusBackground('bg-green-100');
+    } else if (selectedMember.status === 'grace') {
+      setStatusBackground('bg-yellow-100');
+    } else if (selectedMember.status === 'expired') {
+      setStatusBackground('bg-red-100');
+    }
+
+    // Check if already checked in today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const { data: checkInData, error: checkInError } = await supabase
+      .from('check_ins')
+      .select('*')
+      .eq('member_id', selectedMember.id)
+      .gte('check_in_time', today.toISOString())
+      .maybeSingle();
+
+    if (checkInError) throw checkInError;
+    setIsCheckedIn(!!checkInData);
   };
 
   const handleCheckIn = async () => {
@@ -336,15 +359,45 @@ const ValidateMemberPage = () => {
           <History className="h-4 w-4 mr-2" />
           Check-in History
         </Button>
-        <Button
-          variant="outline"
-          onClick={handleReset}
-          disabled={isLoading && !member}
-          className="text-sm px-3 py-1.5 h-8 min-w-[80px]"
-        >
-          Reset
-        </Button>
       </div>
+
+      {/* Search Results Dialog */}
+      <Dialog open={showSearchResults} onOpenChange={setShowSearchResults}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Multiple Members Found</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {searchResults.map((result) => (
+              <Card
+                key={result.id}
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => handleMemberSelect(result)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-lg">{result.name}</h3>
+                      <div className="text-sm text-gray-600">
+                        Member ID: {result.member_id}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        NRIC: {formatNRIC(result.nric)}
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={getMemberStatusColor(result.status) + ' text-xs px-2 py-0.5 rounded-full border-2'}
+                    >
+                      {result.status.charAt(0).toUpperCase() + result.status.slice(1)}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {member && (
         <Card className={statusBackground + ' p-6 rounded-2xl shadow-xl'}>

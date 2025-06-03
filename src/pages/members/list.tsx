@@ -176,17 +176,6 @@ const MembersListPage = () => {
               <SelectItem value="student">Student</SelectItem>
             </SelectContent>
           </Select>
-          
-          <Select value={String(itemsPerPage)} onValueChange={(value) => setItemsPerPage(Number(value))}>
-            <SelectTrigger className="w-full sm:w-[130px]">
-              <SelectValue placeholder="Per Page" />
-            </SelectTrigger>
-            <SelectContent>
-              {ITEMS_PER_PAGE_OPTIONS.map(option => (
-                <SelectItem key={option} value={String(option)}>{option} / page</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -316,6 +305,20 @@ const MembersListPage = () => {
           </div>
         </div>
       )}
+
+      {/* Items per page selector at the bottom */}
+      <div className="flex justify-center mt-4">
+        <Select value={String(itemsPerPage)} onValueChange={(value) => setItemsPerPage(Number(value))}>
+          <SelectTrigger className="w-full sm:w-[130px]">
+            <SelectValue placeholder="Per Page" />
+          </SelectTrigger>
+          <SelectContent>
+            {ITEMS_PER_PAGE_OPTIONS.map(option => (
+              <SelectItem key={option} value={String(option)}>{option} / page</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 };

@@ -29,6 +29,7 @@ const formSchema = z.object({
   phone: z.string().optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
+  end_date: z.string().min(1, 'Expiry date is required'),
 });
 
 const EditMemberPage = () => {
@@ -48,6 +49,7 @@ const EditMemberPage = () => {
       phone: '',
       address: '',
       notes: '',
+      end_date: '',
     },
   });
 
@@ -70,6 +72,7 @@ const EditMemberPage = () => {
           phone: data.phone || '',
           address: data.address || '',
           notes: data.notes || '',
+          end_date: typeof data.end_date === 'string' && data.end_date ? data.end_date.slice(0, 10) : '',
         });
       } catch (error) {
         console.error('Error fetching member:', error);
@@ -95,6 +98,7 @@ const EditMemberPage = () => {
         .from('members')
         .update({
           ...values,
+          end_date: values.end_date ? new Date(values.end_date).toISOString() : undefined,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
@@ -225,6 +229,20 @@ const EditMemberPage = () => {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="end_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Expiry Date</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           <FormField
@@ -245,7 +263,7 @@ const EditMemberPage = () => {
             <Button type="submit" disabled={isLoading}>
               {isLoading ? (
                 <div className="flex items-center">
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   <span>Saving</span>
                 </div>
               ) : (
