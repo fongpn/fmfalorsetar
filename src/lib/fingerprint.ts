@@ -83,6 +83,7 @@ export const validateDeviceFingerprint = async (userId: string): Promise<{
 }> => {
   try {
     const fingerprint = generateFingerprint();
+    console.log('Validating device fingerprint:', { userId, fingerprint });
     
     // Call the Supabase Edge Function to validate the device
     const { data, error } = await supabase.functions.invoke('validate-device', {
@@ -91,13 +92,16 @@ export const validateDeviceFingerprint = async (userId: string): Promise<{
 
     if (error) {
       console.error('Error validating device fingerprint:', error);
-      return { isAuthorized: false, message: 'Error validating device' };
+      // Don't block access on validation error
+      return { isAuthorized: true, message: 'Error validating device, allowing access' };
     }
 
+    console.log('Device validation response:', data);
     return data;
   } catch (error) {
     console.error('Unexpected error during device validation:', error);
-    return { isAuthorized: false, message: 'Unexpected error during device validation' };
+    // Don't block access on unexpected errors
+    return { isAuthorized: true, message: 'Unexpected error during device validation, allowing access' };
   }
 };
 

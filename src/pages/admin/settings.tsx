@@ -14,8 +14,11 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { allRoles } from '@/lib/auth';
-import type { AppSettings, UserRole } from '@/types';
+import type { AppSettings, UserRole, MembershipPlan, MembershipType } from '@/types';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useForm } from 'react-hook-form';
+import { auditHelpers } from '@/lib/audit';
 
 const defaultSettings: AppSettings = {
   fingerprinting_enabled: false,
@@ -36,75 +39,138 @@ const SettingsPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const addForm = useForm<Partial<MembershipPlan>>({
+    defaultValues: {
+      type: 'standard',
+      months: 1,
+      price: 0,
+      registration_fee: 0,
+      free_months: 0,
+      active: true,
+    },
+  });
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_settings');
+    fetchSettings();
+    fetchMembershipPlans();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_settings');
+      if (error) throw error;
+      if (data) {
+        setSettings(data as AppSettings);
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load settings',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchMembershipPlans = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('*')
+        .order('type');
+      
+      if (error) throw error;
+      setMembershipPlans((data || []).map(plan => ({
+        ...plan,
+        type: plan.type as MembershipType
+      })));
+    } catch (error) {
+      console.error('Error fetching membership plans:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load membership plans',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleMembershipPlanChange = async (type: MembershipType, field: keyof MembershipPlan, value: any) => {
+    try {
+      const existingPlan = membershipPlans.find(p => p.type === type);
+      
+      if (existingPlan) {
+        // Update existing plan
+        const { error } = await supabase
+          .from('membership_plans')
+          .update({ [field]: value })
+          .eq('id', existingPlan.id);
         
         if (error) throw error;
-        setSettings(data as unknown as AppSettings);
-      } catch (error) {
-        console.error('Error fetching settings:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load settings',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
+        
+        setMembershipPlans(prev => 
+          prev.map(p => p.id === existingPlan.id ? { ...p, [field]: value } : p)
+        );
+      } else {
+        // Create new plan
+        const { data, error } = await supabase
+          .from('membership_plans')
+          .insert({
+            type,
+            months: field === 'months' ? value : 1,
+            price: field === 'price' ? value : 0,
+            registration_fee: field === 'registration_fee' ? value : 0,
+            free_months: field === 'free_months' ? value : 0,
+            active: field === 'active' ? value : true,
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        setMembershipPlans(prev => [...prev, { ...data, type: data.type as MembershipType }]);
       }
-    };
-
-    fetchSettings();
-  }, [toast]);
+    } catch (error) {
+      console.error('Error updating membership plan:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update membership plan',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      console.log('Current settings before formatting:', settings);
+      const { error } = await supabase.rpc('update_settings', { settings });
+      if (error) throw error;
 
-      // Format settings for PostgreSQL
-      const formattedSettings = {
-        ...settings,
-        // Format fingerprinting_roles as a PostgreSQL array
-        fingerprinting_roles: settings.fingerprinting_enabled ? ['cashier'] : [],
-        logo_text: settings.logo_text || '',
-        logo_icon: settings.logo_icon || '',
-        logo_url: settings.logo_url || '',
-        primary_color: settings.primary_color || '#0f172a',
-        adult_walk_in_price: settings.adult_walk_in_price || 15.00,
-        youth_walk_in_price: settings.youth_walk_in_price || 10.00,
-        adult_coupon_price: settings.adult_coupon_price || 120.00,
-        youth_coupon_price: settings.youth_coupon_price || 80.00,
-        coupon_max_uses: settings.coupon_max_uses || 10
-      };
-
-      console.log('Formatted settings:', formattedSettings);
-
-      // Send the settings object directly without stringifying
-      const { data, error } = await supabase.rpc('update_all_settings', {
-        settings_json: formattedSettings
-      });
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-
-      console.log('Supabase response data:', data);
-
-      // Update local state with the returned data
-      if (data) {
-        console.log('Updating local state with:', data);
-        setSettings(data as unknown as AppSettings);
+      // Create audit log for settings change
+      if (user) {
+        await auditHelpers.settingsChange(
+          user.id,
+          'membership_plans_and_settings',
+          null,
+          {
+            membership_plans: membershipPlans,
+            settings: {
+              grace_period_days: settings.grace_period_days,
+              adult_walk_in_price: settings.adult_walk_in_price,
+              youth_walk_in_price: settings.youth_walk_in_price
+            }
+          }
+        );
       }
 
       toast({
         title: 'Success',
-        description: 'Settings updated successfully',
+        description: 'Settings saved successfully',
       });
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -167,38 +233,31 @@ const SettingsPage = () => {
     }
   };
 
-  // Add effect to refresh settings when component mounts
-  useEffect(() => {
-    const loadSettings = async () => {
-      setIsLoading(true);
-      try {
-        console.log('Fetching settings from Supabase...');
-        const { data, error } = await supabase.rpc('get_settings');
-        
-        if (error) {
-          console.error('Error fetching settings:', error);
-          throw error;
-        }
-
-        console.log('Settings fetched from Supabase:', data);
-        
-        if (data) {
-          setSettings(data as unknown as AppSettings);
-        }
-      } catch (error) {
-        console.error('Error refreshing settings:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to refresh settings',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadSettings();
-  }, [toast]);
+  const handleAddPlan = async (values: Partial<MembershipPlan>) => {
+    try {
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .insert([
+          {
+            type: values.type as string,
+            months: values.months ?? 1,
+            price: values.price ?? 0,
+            registration_fee: values.registration_fee ?? 0,
+            free_months: values.free_months ?? 0,
+            active: values.active ?? true,
+          }
+        ])
+        .select()
+        .single();
+      if (error) throw error;
+      setMembershipPlans(prev => [...prev, { ...data, type: data.type as MembershipType }]);
+      setIsAddModalOpen(false);
+      addForm.reset();
+      toast({ title: 'Success', description: 'Membership plan added.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to add membership plan', variant: 'destructive' });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -383,11 +442,167 @@ const SettingsPage = () => {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Coupon Settings</CardTitle>
+          <CardDescription>
+            Configure coupon pricing and usage limits
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Adult Coupon Price (RM)</Label>
+            <Input
+              type="number"
+              min={0}
+              step={0.01}
+              value={settings.adult_coupon_price || 0}
+              onChange={e => setSettings(prev => ({ ...prev, adult_coupon_price: parseFloat(e.target.value) }))}
+              placeholder="Enter adult coupon price"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Youth Coupon Price (RM)</Label>
+            <Input
+              type="number"
+              min={0}
+              step={0.01}
+              value={settings.youth_coupon_price || 0}
+              onChange={e => setSettings(prev => ({ ...prev, youth_coupon_price: parseFloat(e.target.value) }))}
+              placeholder="Enter youth coupon price"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Maximum Coupon Uses</Label>
+            <Input
+              type="number"
+              min={1}
+              value={settings.coupon_max_uses || 1}
+              onChange={e => setSettings(prev => ({ ...prev, coupon_max_uses: parseInt(e.target.value, 10) }))}
+              placeholder="Enter maximum number of uses per coupon"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Membership Package Settings</CardTitle>
+          <CardDescription>
+            Configure membership package types and pricing
+          </CardDescription>
+          <Button className="mt-4" onClick={() => setIsAddModalOpen(true)}>
+            Add Membership Plan
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {membershipPlans.map((plan) => (
+              <div key={plan.id} className="border rounded-lg p-4 space-y-4">
+                <h3 className="font-medium capitalize">{plan.type} Package</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Duration (months)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={plan.months}
+                      onChange={e => handleMembershipPlanChange(plan.type, 'months', parseInt(e.target.value, 10))}
+                      placeholder="Enter duration in months"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Price (RM)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={plan.price}
+                      onChange={e => handleMembershipPlanChange(plan.type, 'price', parseFloat(e.target.value))}
+                      placeholder="Enter price"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Registration Fee (RM)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={plan.registration_fee}
+                      onChange={e => handleMembershipPlanChange(plan.type, 'registration_fee', parseFloat(e.target.value))}
+                      placeholder="Enter registration fee"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Free Months</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={plan.free_months}
+                      onChange={e => handleMembershipPlanChange(plan.type, 'free_months', parseInt(e.target.value, 10))}
+                      placeholder="Enter number of free months"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={plan.active}
+                    onCheckedChange={(checked) => handleMembershipPlanChange(plan.type, 'active', checked)}
+                  />
+                  <Label>Active</Label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
+
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Membership Plan</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={addForm.handleSubmit(handleAddPlan)}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Input {...addForm.register('type', { required: true })} placeholder="e.g. standard, premium, family, student" />
+            </div>
+            <div className="space-y-2">
+              <Label>Duration (months)</Label>
+              <Input type="number" min={1} {...addForm.register('months', { valueAsNumber: true, required: true })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Price (RM)</Label>
+              <Input type="number" min={0} step={0.01} {...addForm.register('price', { valueAsNumber: true, required: true })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Registration Fee (RM)</Label>
+              <Input type="number" min={0} step={0.01} {...addForm.register('registration_fee', { valueAsNumber: true, required: true })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Free Months</Label>
+              <Input type="number" min={0} {...addForm.register('free_months', { valueAsNumber: true, required: true })} />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch checked={addForm.watch('active')} onCheckedChange={checked => addForm.setValue('active', checked)} />
+              <Label>Active</Label>
+            </div>
+            <DialogFooter>
+              <Button type="submit">Add Plan</Button>
+              <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

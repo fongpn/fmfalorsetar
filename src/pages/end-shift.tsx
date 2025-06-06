@@ -26,6 +26,7 @@ const EndShiftPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeShift, setActiveShift] = useState<Shift | null>(null);
+  const [availableUsers, setAvailableUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
   const [totals, setTotals] = useState({
     cash: 0,
     qr: 0,
@@ -65,6 +66,17 @@ const EndShiftPage = () => {
         
         if (totalsError) throw totalsError;
         setTotals(shiftTotals);
+
+        // Fetch available users for handover
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .eq('role', 'cashier')
+          .eq('active', true)
+          .neq('id', user.id);
+
+        if (usersError) throw usersError;
+        setAvailableUsers(users || []);
       } catch (error) {
         console.error('Error loading shift data:', error);
         toast({
@@ -232,8 +244,11 @@ const EndShiftPage = () => {
                 <SelectValue placeholder="Select user to handover to" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user1">User 1</SelectItem>
-                <SelectItem value="user2">User 2</SelectItem>
+                {availableUsers.map(user => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.name || user.email}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

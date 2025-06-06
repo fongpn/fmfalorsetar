@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { auditHelpers } from '@/lib/audit';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -159,6 +160,18 @@ const NewWalkInPage = ({ onSuccess, onCancel }: NewWalkInPageProps) => {
 
       if (paymentError) throw paymentError;
 
+      // Create audit log entry
+      await auditHelpers.walkIn(
+        user.id,
+        values.name || 'Anonymous',
+        values.ageGroup,
+        amount,
+        {
+          payment_method: values.paymentMethod,
+          shift_id: shiftData.id
+        }
+      );
+
       toast({
         title: 'Success',
         description: 'Walk-in recorded successfully',
@@ -167,7 +180,7 @@ const NewWalkInPage = ({ onSuccess, onCancel }: NewWalkInPageProps) => {
       if (onSuccess) {
         onSuccess();
       } else {
-        navigate('/walk-ins');
+        navigate('/walk-ins/list');
       }
     } catch (error) {
       console.error('Error recording walk-in:', error);
@@ -197,7 +210,7 @@ const NewWalkInPage = ({ onSuccess, onCancel }: NewWalkInPageProps) => {
       <div className="space-y-6 text-center">
          <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" asChild>
-            <Link to="/walk-ins">
+            <Link to="/walk-ins/list">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -214,7 +227,7 @@ const NewWalkInPage = ({ onSuccess, onCancel }: NewWalkInPageProps) => {
       <div className="w-full max-w-xl bg-white rounded-2xl shadow-lg p-8">
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" asChild className="border-none shadow-none">
-            <Link to="/walk-ins">
+            <Link to="/walk-ins/list">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
@@ -325,7 +338,7 @@ const NewWalkInPage = ({ onSuccess, onCancel }: NewWalkInPageProps) => {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => { if (onCancel) { onCancel(); } else { navigate('/walk-ins'); } }}
+                onClick={() => { if (onCancel) { onCancel(); } else { navigate('/walk-ins/list'); } }}
                 disabled={isSubmitting || isLoading}
                 className="rounded-full px-8 py-2 font-semibold text-gray-500 hover:bg-gray-100 border-none shadow-none"
               >

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import type { Member } from '@/types';
+import { auditHelpers } from '@/lib/audit';
 
 const MemberImportPage: React.FC = () => {
   const navigate = useNavigate();
@@ -190,6 +191,19 @@ const MemberImportPage: React.FC = () => {
         if (paymentError) {
           throw new Error(`Failed to record payment for: ${memberData.name}`);
         }
+
+        // Create audit log for member import
+        await auditHelpers.memberImport(
+          user.id,
+          insertedMember.id,
+          memberData.name,
+          {
+            membership_type: memberData.membership_type,
+            payment_method: 'cash',
+            amount: plan.price + plan.registration_fee,
+            shift_id: activeShiftId
+          }
+        );
       }
 
       toast({

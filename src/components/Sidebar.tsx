@@ -5,9 +5,8 @@ export default function Sidebar() {
   const { settings } = useSettings();
   return (
     <aside className="...">
-      <div className="flex items-center gap-2 px-4 py-6">
-        <Logo className="h-8 w-8" />
-        <span className="font-bold text-xl">{settings?.logo_text || 'FMF'}</span>
+      <div className="flex items-center justify-center px-4 py-2 w-full">
+        <Logo className="w-full h-24 object-contain" />
       </div>
       {/* ...rest of your sidebar... */}
     </aside>

@@ -30,6 +30,7 @@ import LoadingSpinner from '@/components/ui/loading-spinner';
 import { validateNRIC } from '@/lib/utils';
 import type { MembershipType, PaymentMethod, Member } from '@/types';
 import type { Database } from '@/types/supabase';
+import { auditHelpers } from '@/lib/audit';
 
 type MemberInsert = Database['public']['Tables']['members']['Insert'];
 type MembershipPlan = Database['public']['Tables']['membership_plans']['Row'];
@@ -306,6 +307,19 @@ const NewMemberPage = () => {
         });
 
       if (paymentRecordError) throw paymentRecordError;
+
+      // Create audit log for member registration
+      await auditHelpers.memberRegistration(
+        user.id,
+        insertedMember.id,
+        values.name,
+        {
+          membership_type: values.membership_type,
+          payment_method: values.paymentMethod,
+          amount: totalPayable,
+          shift_id: activeShiftId
+        }
+      );
 
       toast({
         title: 'Success',

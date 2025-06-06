@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Shift, PaymentMethod } from '@/types';
+import { auditHelpers } from './audit';
 
 // Start a new shift
 export const startShift = async (userId: string): Promise<{
@@ -42,6 +43,9 @@ export const startShift = async (userId: string): Promise<{
       console.error('Error starting shift:', error);
       return { success: false, message: 'Error starting shift' };
     }
+
+    // Create audit log for shift start
+    await auditHelpers.shiftStart(userId, data.id);
 
     return { success: true, shiftId: data.id };
   } catch (error) {
@@ -91,6 +95,15 @@ export const endShift = async (
       return { success: false, message: 'Error ending shift' };
     }
 
+    // Create audit log for shift end
+    await auditHelpers.shiftEnd(userId, shiftId, {
+      declared_cash: declaredCash,
+      declared_qr: declaredQr,
+      declared_bank_transfer: declaredBankTransfer,
+      notes,
+      handover_to: handoverTo
+    });
+
     return { success: true };
   } catch (error) {
     console.error('Unexpected error ending shift:', error);
@@ -99,12 +112,8 @@ export const endShift = async (
 };
 
 // Get active shift for current user
-export const getActiveShift = async (userId: string): Promise<{
-  shift?: Shift;
-  error?: string;
-}> => {
+export const getActiveShift = async (userId: string): Promise<{ shift: Shift | null; error: string | null }> => {
   try {
-    // First, try to get all active shifts for the user
     const { data, error } = await supabase
       .from('shifts')
       .select('*')
@@ -112,23 +121,23 @@ export const getActiveShift = async (userId: string): Promise<{
       .is('end_time', null)
       .order('start_time', { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .single();
 
     if (error) {
-      console.error('Error getting active shift:', error);
-      return { error: 'Error getting active shift' };
+      if (error.code === 'PGRST116') {
+        // No active shift found
+        return { shift: null, error: null };
+      }
+      throw error;
     }
 
-    // If no active shift found, return empty object
-    if (!data) {
-      return {};
-    }
-
-    // If we found an active shift, return it
-    return { shift: data as Shift };
+    return { shift: data as Shift, error: null };
   } catch (error) {
-    console.error('Unexpected error getting active shift:', error);
-    return { error: 'Unexpected error getting active shift' };
+    console.error('Error fetching active shift:', error);
+    return { 
+      shift: null, 
+      error: error instanceof Error ? error.message : 'Failed to fetch active shift' 
+    };
   }
 };
 

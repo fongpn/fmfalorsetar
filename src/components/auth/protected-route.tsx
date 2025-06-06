@@ -89,7 +89,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
   // Check role-based access if required
   if (allowedRoles && !hasPermission(allowedRoles)) {
-    return <Navigate to="/\" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Render the protected content

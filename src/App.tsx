@@ -1,5 +1,5 @@
 import { useState, useEffect, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster as ShadToaster } from '@/components/ui/toaster'; // Renamed to avoid conflict if you use useToast hook directly
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -107,8 +107,8 @@ function AppContent() {
         
         {/* Walk-Ins */}
         <Route path="walk-ins">
-          <Route index element={<WalkInsListPage />} />
-          <Route path="new" element={<NewWalkInPage />} />
+          <Route index element={<NewWalkInPage />} />
+          <Route path="list" element={<WalkInsListPage />} />
         </Route>
         
         {/* POS */}
@@ -133,7 +133,7 @@ function AppContent() {
           <Route path="users" element={
             <ProtectedRoute allowedRoles={adminRoles}><AdminUsersPage /></ProtectedRoute>
           } />
-          <Route path="products" element={
+          <Route path="products/*" element={
             <ProtectedRoute allowedRoles={adminRoles}><AdminProductsPage /></ProtectedRoute>
           } />
           <Route path="coupons" element={
@@ -218,12 +218,10 @@ import EditCouponPage from '@/pages/coupons/edit';
 function App() {
   return (
     <SettingsProvider>
-      <Router>
-        <AuthProvider>
-          <AppContent />
-          <ShadToaster />
-        </AuthProvider>
-      </Router>
+      <AuthProvider>
+        <AppContent />
+        <ShadToaster />
+      </AuthProvider>
     </SettingsProvider>
   );
 }

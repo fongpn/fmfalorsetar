@@ -47,12 +47,14 @@ export function getRelativeTime(dateString: string): string {
 }
 
 // Format currency
-export function formatCurrency(amount: number): string {
+export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-MY', {
     style: 'currency',
     currency: 'MYR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
-}
+};
 
 // Calculate member status based on dates
 export function calculateMemberStatus(startDate: string, endDate: string): MemberStatus {

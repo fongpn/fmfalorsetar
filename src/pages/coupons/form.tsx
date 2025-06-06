@@ -19,6 +19,18 @@ type PaymentMethod = 'cash' | 'qr' | 'bank_transfer';
 
 const defaultPrices = { adult: 45, youth: 35, max_uses: 1 };
 
+interface CouponFormData {
+  code: string;
+  type: 'adult' | 'youth';
+  price: number;
+  valid_from?: string;
+  valid_to: string;
+  max_uses: number;
+  current_uses: number;
+  active: boolean;
+  owner_name: string;
+}
+
 export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
   const { id: paramId } = useParams();
   const id = couponId || paramId;
@@ -29,13 +41,13 @@ export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showUsageModal, setShowUsageModal] = useState(false);
-  const [formData, setFormData] = useState<Partial<Coupon>>({
+  const [formData, setFormData] = useState<CouponFormData>({
     code: '',
     type: 'adult',
-    price: defaultPrices.adult,
+    price: settings?.adult_coupon_price || defaultPrices.adult,
     valid_from: format(new Date(), 'yyyy-MM-dd'),
     valid_to: format(subDays(addMonths(new Date(), 1), 1), 'yyyy-MM-dd'),
-    max_uses: undefined,
+    max_uses: settings?.coupon_max_uses || defaultPrices.max_uses,
     current_uses: 0,
     active: true,
     owner_name: '',
@@ -49,8 +61,12 @@ export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
   }, [id]);
 
   useEffect(() => {
-    if (settings && !formData.max_uses) {
-      setFormData((prev: Partial<Coupon>) => ({ ...prev, max_uses: settings.coupon_max_uses }));
+    if (settings) {
+      setFormData(prev => ({
+        ...prev,
+        price: prev.type === 'adult' ? settings.adult_coupon_price : settings.youth_coupon_price,
+        max_uses: settings.coupon_max_uses
+      }));
     }
   }, [settings]);
 
@@ -58,11 +74,14 @@ export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
     setLoading(true);
     const { data, error } = await supabase.from('coupons').select('*').eq('id', id).single();
     if (!error && data) {
+      const validFrom = data.valid_from ? format(new Date(data.valid_from), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+      const validTo = data.valid_to ? format(new Date(data.valid_to), 'yyyy-MM-dd') : format(subDays(addMonths(new Date(), 1), 1), 'yyyy-MM-dd');
+      
       setFormData({
         ...data,
         type: data.type === 'adult' ? 'adult' : 'youth',
-        valid_from: format(new Date(data.valid_from), 'yyyy-MM-dd'),
-        valid_to: format(new Date(data.valid_to), 'yyyy-MM-dd'),
+        valid_from: validFrom,
+        valid_to: validTo,
       });
     }
     setLoading(false);
@@ -77,7 +96,7 @@ export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
   };
 
   const handleCodeChange = async (code: string) => {
-    setFormData({ ...formData, code: code.toUpperCase() });
+    setFormData(prev => ({ ...prev, code: code.toUpperCase() }));
     setCodeError('');
     if (code) {
       const exists = await checkCouponCodeExists(code);
@@ -86,15 +105,31 @@ export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
   };
 
   const handleTypeChange = (type: 'adult' | 'youth') => {
-    setFormData({ ...formData, type, price: type === 'adult' ? defaultPrices.adult : defaultPrices.youth });
+    setFormData(prev => ({
+      ...prev,
+      type,
+      price: type === 'adult' ? (settings?.adult_coupon_price || defaultPrices.adult) : (settings?.youth_coupon_price || defaultPrices.youth)
+    }));
   };
 
-  const handleValidFromChange = (date: string = '') => {
-    const safeDate = date || format(new Date(), 'yyyy-MM-dd');
-    setFormData((prev: Partial<Coupon>) => ({
+  const handleValidFromChange = (date: string | undefined) => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const validFrom = date || today;
+    
+    const parsedDate = parseISO(validFrom);
+    if (isNaN(parsedDate.getTime())) {
+      setFormData(prev => ({
+        ...prev,
+        valid_from: today,
+        valid_to: format(subDays(addMonths(new Date(), 1), 1), 'yyyy-MM-dd'),
+      }));
+      return;
+    }
+
+    setFormData(prev => ({
       ...prev,
-      valid_from: safeDate,
-      valid_to: format(subDays(addMonths(parseISO(safeDate), 1), 1), 'yyyy-MM-dd'),
+      valid_from: validFrom,
+      valid_to: format(subDays(addMonths(parsedDate, 1), 1), 'yyyy-MM-dd'),
     }));
   };
 
@@ -134,7 +169,7 @@ export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
       code: (formData.code || '').toUpperCase(),
       valid_from: new Date(formData.valid_from as string).toISOString(),
       valid_to: new Date(formData.valid_to as string).toISOString(),
-      price: formData.type === 'adult' ? defaultPrices.adult : defaultPrices.youth,
+      price: formData.type === 'adult' ? (settings?.adult_coupon_price || defaultPrices.adult) : (settings?.youth_coupon_price || defaultPrices.youth),
       max_uses: settings?.coupon_max_uses ?? 1,
       current_uses: 0,
       created_by: user?.id || '',
@@ -179,21 +214,26 @@ export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
                 <div className="flex gap-4 mt-2">
                   <label className={`flex items-center gap-2 cursor-pointer ${formData.type === 'adult' ? 'font-bold text-orange-600' : ''}`}>
                     <input type="radio" name="type" value="adult" checked={formData.type === 'adult'} onChange={() => handleTypeChange('adult')} className="sr-only" />
-                    Adult (RM {defaultPrices.adult})
+                    Adult (RM {formData.price})
                   </label>
                   <label className={`flex items-center gap-2 cursor-pointer ${formData.type === 'youth' ? 'font-bold text-orange-600' : ''}`}>
                     <input type="radio" name="type" value="youth" checked={formData.type === 'youth'} onChange={() => handleTypeChange('youth')} className="sr-only" />
-                    Youth (RM {defaultPrices.youth})
+                    Youth (RM {formData.price})
                   </label>
                 </div>
               </div>
               <div>
                 <Label htmlFor="valid_from">Valid From</Label>
-                <Input id="valid_from" type="date" value={formData.valid_from as string} onChange={(e) => handleValidFromChange(e.target.value)} />
+                <Input 
+                  id="valid_from" 
+                  type="date" 
+                  value={formData.valid_from} 
+                  onChange={(e) => handleValidFromChange(e.target.value)} 
+                />
               </div>
               <div>
                 <Label htmlFor="valid_to">Valid Until <span className="text-xs text-gray-500">(Inclusive)</span></Label>
-                <Input id="valid_to" type="date" value={formData.valid_to as string} readOnly />
+                <Input id="valid_to" type="date" value={formData.valid_to} readOnly />
               </div>
               <div className="flex items-center">
                 <input id="active" type="checkbox" checked={formData.active} onChange={(e) => setFormData({ ...formData, active: e.target.checked })} className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded" />
@@ -240,4 +280,4 @@ export default function CouponForm({ onSuccess, couponId }: CouponFormProps) {
       </Dialog>
     </>
   );
-} 
+}

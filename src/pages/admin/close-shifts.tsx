@@ -39,6 +39,7 @@ import { useDebounce } from '../../hooks/use-debounce';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import type { PostgrestError } from '@supabase/supabase-js';
+import { auditHelpers } from '@/lib/audit';
 
 interface ShiftDetails {
   id: string;
@@ -357,7 +358,7 @@ const CloseShiftsPage = () => {
       const { error } = await supabase.rpc<{ id: string }>('create_shift_handover', {
         shift_id: selectedShift.id,
         from_user_id: user.id,
-        to_user_id: selectedUserId ? selectedUserId : '',
+        to_user_id: selectedUserId,
         handover_notes: handoverNotes || '',
         cash_amount: selectedShift.system_cash || 0,
         qr_amount: selectedShift.system_qr || 0,
@@ -365,6 +366,19 @@ const CloseShiftsPage = () => {
       });
 
       if (error) throw error;
+
+      // Create audit log for shift handover
+      await auditHelpers.shiftHandover(
+        user.id,
+        selectedShift.id,
+        selectedUserId,
+        {
+          handover_notes: handoverNotes,
+          cash_amount: selectedShift.system_cash || 0,
+          qr_amount: selectedShift.system_qr || 0,
+          bank_transfer_amount: selectedShift.system_bank_transfer || 0
+        }
+      );
 
       toast({
         title: 'Success',

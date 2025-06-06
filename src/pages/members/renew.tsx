@@ -34,6 +34,7 @@ import LoadingSpinner from '@/components/ui/loading-spinner';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import type { Member, MembershipPlan, MembershipType } from '@/types';
 import { addDays, differenceInDays, isAfter } from 'date-fns';
+import { auditHelpers } from '@/lib/audit';
 
 const formSchema = z.object({
   membership_type: z.enum(['standard', 'premium', 'family', 'student'] as const),
@@ -250,6 +251,22 @@ const RenewMembershipPage = () => {
           shift_id: activeShiftId,
         });
       if (paymentError) throw paymentError;
+
+      // Create audit log for member renewal
+      await auditHelpers.memberRenewal(
+        user!.id,
+        member.id,
+        member.name,
+        {
+          membership_type: values.membership_type,
+          payment_method: values.payment_method,
+          amount: selectedPlan.price,
+          shift_id: activeShiftId,
+          walk_in_charges: walkInCharges,
+          walk_in_charge_count: walkInChargeCount
+        }
+      );
+
       let toastMsg = 'Membership renewed successfully';
       if (walkInChargeCount > 0) {
         toastMsg += `. Walk-in charges for grace period: RM ${walkInCharges.toFixed(2)} (${walkInChargeCount} access${walkInChargeCount > 1 ? 'es' : ''})`;

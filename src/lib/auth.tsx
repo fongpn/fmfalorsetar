@@ -78,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (event, session) => {
         // Only process SIGNED_IN and SIGNED_OUT events
         if (event !== 'SIGNED_IN' && event !== 'SIGNED_OUT') {
+          setIsLoading(false);
           return;
         }
 
@@ -85,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Skip if we've already processed this user
         if (event === 'SIGNED_IN' && session?.user?.id === lastProcessedUserId.current) {
+          setIsLoading(false);
           return;
         }
 
@@ -93,19 +95,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (event === 'SIGNED_IN' && session) {
           setIsLoading(true);
           console.log('Fetching user data for:', session.user.id);
-          // Fetch user data when signed in
-          const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (!isMounted) return;
+          try {
+            // Fetch user data when signed in
+            const { data, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+              
+            if (!isMounted) return;
 
-          if (error) {
-            console.error('Error fetching user:', error);
-            await signOut();
-          } else if (data) {
+            if (error) {
+              console.error('Error fetching user:', error);
+              await signOut();
+              return;
+            }
+
+            if (!data) {
+              console.error('No user data found');
+              await signOut();
+              return;
+            }
+
             console.log('User data fetched:', data);
             // Check if user is active
             if (!data.active) {
@@ -120,29 +131,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             
             // Get app settings to check if fingerprinting is enabled
-            const { data: settings } = await supabase.rpc('get_settings');
+            const { data: settings, error: settingsError } = await supabase.rpc('get_settings');
             if (!isMounted) return;
             
-            console.log('App settings:', settings);
-            
-            const appSettings = settings as unknown as AppSettings;
-            const userRole = data.role as UserRole;
-            if (appSettings?.fingerprinting_enabled && 
-                appSettings?.fingerprinting_roles?.includes(userRole)) {
-              console.log('Device fingerprinting is enabled for role, validating device...');
-              // Validate device fingerprint
-              const result = await validateDeviceFingerprint(session.user.id);
-              if (!isMounted) return;
+            if (settingsError) {
+              console.error('Error fetching settings:', settingsError);
+              // Continue without fingerprinting
+            } else {
+              console.log('App settings:', settings);
               
-              console.log('Device validation result:', result);
-              
-              if (!result.isAuthorized) {
-                console.log('Device not authorized, redirecting to waiting page');
-                navigate('/waiting-for-approval', { 
-                  state: { requestId: result.requestId },
-                  replace: true 
-                });
-                return;
+              const appSettings = settings as unknown as AppSettings;
+              const userRole = data.role as UserRole;
+              if (appSettings?.fingerprinting_enabled && 
+                  appSettings?.fingerprinting_roles?.includes(userRole)) {
+                console.log('Device fingerprinting is enabled for role, validating device...');
+                // Validate device fingerprint
+                const result = await validateDeviceFingerprint(session.user.id);
+                if (!isMounted) return;
+                
+                console.log('Device validation result:', result);
+                
+                if (!result.isAuthorized) {
+                  console.log('Device not authorized, redirecting to waiting page');
+                  navigate('/waiting-for-approval', { 
+                    state: { requestId: result.requestId },
+                    replace: true 
+                  });
+                  return;
+                }
               }
             }
             
@@ -159,6 +175,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log('User state updated, redirecting to dashboard');
               navigate('/', { replace: true });
             }
+          } catch (error) {
+            console.error('Error during sign in process:', error);
+            await signOut();
           }
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out');
