@@ -94,20 +94,20 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
-      <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
+    <div className="min-h-screen flex items-center justify-center bg-white p-4">
+      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-md">
         <div className="text-center">
           <div className="flex justify-center mb-2">
             <Logo className="h-32 w-56" />
           </div>
           {!settings?.logo_url && (
-            <h2 className="mt-4 text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="mt-4 text-3xl font-bold text-gray-900">
               {settings?.logo_text || 'Membership App'}
             </h2>
           )}
-          <p className="mt-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
-  Membership Management System
-</p>
+          <p className="mt-2 text-lg font-semibold text-gray-700">
+            Membership Management System
+          </p>
         </div>
 
         <Form {...form}>

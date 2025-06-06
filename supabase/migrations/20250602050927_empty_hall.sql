@@ -19,6 +19,7 @@
     - device_authorization_requests: Manages device authorization requests
     - authorized_devices: Stores authorized devices
     - audit_log: Records system activity
+    - shift_handovers: Records shift handovers
 
   2. Functions
     - handle_start_shift_attempt: Manages shift start logic
@@ -32,6 +33,9 @@
     - get_sales_report: Generates sales reports
     - get_membership_report: Generates membership reports
     - get_attendance_report: Generates attendance reports
+    - get_shift_report: Generates shift report data
+    - create_shift_handover: Creates a new shift handover
+    - get_shift_audit_trail: Generates shift audit trail
 
   3. Security
     - RLS enabled on all tables
@@ -462,6 +466,50 @@ CREATE POLICY "Admins can read audit logs"
     )
   );
 
+-- Create shift_handovers table
+CREATE TABLE IF NOT EXISTS shift_handovers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  shift_id UUID REFERENCES shifts(id) ON DELETE CASCADE,
+  from_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  to_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  handover_notes TEXT,
+  cash_amount NUMERIC NOT NULL DEFAULT 0,
+  qr_amount NUMERIC NOT NULL DEFAULT 0,
+  bank_transfer_amount NUMERIC NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Add RLS policies for shift_handovers
+ALTER TABLE shift_handovers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own handovers"
+  ON shift_handovers FOR SELECT
+  USING (
+    auth.uid() = from_user_id OR 
+    auth.uid() = to_user_id OR 
+    auth.uid() IN (SELECT id FROM auth.users WHERE role IN ('admin', 'superadmin'))
+  );
+
+CREATE POLICY "Users can create handovers"
+  ON shift_handovers FOR INSERT
+  WITH CHECK (
+    auth.uid() = from_user_id AND
+    EXISTS (
+      SELECT 1 FROM shifts 
+      WHERE id = shift_id 
+      AND user_id = auth.uid()
+      AND end_time IS NULL
+    )
+  );
+
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_shift_handovers_shift_id ON shift_handovers(shift_id);
+CREATE INDEX IF NOT EXISTS idx_shift_handovers_from_user_id ON shift_handovers(from_user_id);
+CREATE INDEX IF NOT EXISTS idx_shift_handovers_to_user_id ON shift_handovers(to_user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_shift_id ON payments(shift_id);
+CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
+
 -- Create helper functions
 CREATE OR REPLACE FUNCTION generate_member_id()
 RETURNS text
@@ -804,6 +852,162 @@ BEGIN
   RETURN result;
 END;
 $$;
+
+-- Function to get shift report data
+CREATE OR REPLACE FUNCTION get_shift_report(p_shift_id UUID)
+RETURNS TABLE (
+  shift_id UUID,
+  cashier_name TEXT,
+  start_time TIMESTAMPTZ,
+  end_time TIMESTAMPTZ,
+  total_transactions BIGINT,
+  total_amount NUMERIC,
+  cash_amount NUMERIC,
+  qr_amount NUMERIC,
+  bank_transfer_amount NUMERIC,
+  transactions JSONB
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH shift_data AS (
+    SELECT 
+      s.id,
+      COALESCE(u.name, u.email) as cashier_name,
+      s.start_time,
+      s.end_time,
+      COUNT(p.id) as total_transactions,
+      COALESCE(SUM(p.amount), 0) as total_amount,
+      COALESCE(SUM(CASE WHEN p.method = 'cash' THEN p.amount ELSE 0 END), 0) as cash_amount,
+      COALESCE(SUM(CASE WHEN p.method = 'qr' THEN p.amount ELSE 0 END), 0) as qr_amount,
+      COALESCE(SUM(CASE WHEN p.method = 'bank_transfer' THEN p.amount ELSE 0 END), 0) as bank_transfer_amount
+    FROM shifts s
+    LEFT JOIN auth.users u ON s.user_id = u.id
+    LEFT JOIN payments p ON s.id = p.shift_id
+    WHERE s.id = p_shift_id
+    GROUP BY s.id, u.name, u.email, s.start_time, s.end_time
+  )
+  SELECT 
+    sd.id,
+    sd.cashier_name,
+    sd.start_time,
+    sd.end_time,
+    sd.total_transactions,
+    sd.total_amount,
+    sd.cash_amount,
+    sd.qr_amount,
+    sd.bank_transfer_amount,
+    COALESCE(
+      (
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'id', p.id,
+            'time', p.created_at,
+            'amount', p.amount,
+            'method', p.method,
+            'payment_for', p.payment_for,
+            'member_name', m.name
+          )
+        )
+        FROM payments p
+        LEFT JOIN members m ON p.member_id = m.id
+        WHERE p.shift_id = sd.id
+        ORDER BY p.created_at DESC
+      ),
+      '[]'::jsonb
+    ) as transactions
+  FROM shift_data sd;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to create shift handover
+CREATE OR REPLACE FUNCTION create_shift_handover(
+  shift_id UUID,
+  from_user_id UUID,
+  to_user_id UUID,
+  handover_notes TEXT,
+  cash_amount NUMERIC,
+  qr_amount NUMERIC,
+  bank_transfer_amount NUMERIC
+)
+RETURNS UUID AS $$
+DECLARE
+  handover_id UUID;
+BEGIN
+  INSERT INTO shift_handovers (
+    shift_id,
+    from_user_id,
+    to_user_id,
+    handover_notes,
+    cash_amount,
+    qr_amount,
+    bank_transfer_amount
+  )
+  VALUES (
+    shift_id,
+    from_user_id,
+    to_user_id,
+    handover_notes,
+    cash_amount,
+    qr_amount,
+    bank_transfer_amount
+  )
+  RETURNING id INTO handover_id;
+  
+  RETURN handover_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get shift audit trail
+CREATE OR REPLACE FUNCTION get_shift_audit_trail(shift_id UUID)
+RETURNS TABLE (
+  action_time TIMESTAMPTZ,
+  action_type TEXT,
+  user_id UUID,
+  user_name TEXT,
+  details JSONB
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    COALESCE(s.end_time, s.start_time) as action_time,
+    CASE 
+      WHEN s.end_time IS NOT NULL THEN 'shift_closed'
+      ELSE 'shift_started'
+    END as action_type,
+    COALESCE(s.manually_ended_by, s.user_id) as user_id,
+    COALESCE(u.name, u.email) as user_name,
+    jsonb_build_object(
+      'start_time', s.start_time,
+      'end_time', s.end_time,
+      'declared_cash', s.declared_cash,
+      'declared_qr', s.declared_qr,
+      'declared_bank_transfer', s.declared_bank_transfer,
+      'notes', s.notes
+    ) as details
+  FROM shifts s
+  LEFT JOIN auth.users u ON COALESCE(s.manually_ended_by, s.user_id) = u.id
+  WHERE s.id = shift_id
+  UNION ALL
+  SELECT 
+    sh.created_at as action_time,
+    'handover' as action_type,
+    sh.from_user_id as user_id,
+    COALESCE(u.name, u.email) as user_name,
+    jsonb_build_object(
+      'to_user_id', sh.to_user_id,
+      'to_user_name', COALESCE(u2.name, u2.email),
+      'handover_notes', sh.handover_notes,
+      'cash_amount', sh.cash_amount,
+      'qr_amount', sh.qr_amount,
+      'bank_transfer_amount', sh.bank_transfer_amount
+    ) as details
+  FROM shift_handovers sh
+  LEFT JOIN auth.users u ON sh.from_user_id = u.id
+  LEFT JOIN auth.users u2 ON sh.to_user_id = u2.id
+  WHERE sh.shift_id = shift_id
+  ORDER BY action_time DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Insert default membership plans
 INSERT INTO membership_plans (type, months, price, registration_fee, free_months)

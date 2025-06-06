@@ -80,6 +80,7 @@ const MemberImportPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [skippedRows, setSkippedRows] = useState<{ row: any; reason: string }[]>([]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -143,6 +144,7 @@ const MemberImportPage = () => {
     }
 
     setIsLoading(true);
+    setSkippedRows([]); // Reset skipped rows
     try {
       // Fetch the current highest member_id (as a number)
       const { data: existingMembers, error: fetchError } = await supabase
@@ -154,28 +156,43 @@ const MemberImportPage = () => {
         .map((m: any) => parseInt(m.member_id, 10))
         .filter((n: number) => !isNaN(n));
       let nextId = numericIds.length > 0 ? Math.max(...numericIds) + 1 : 1;
-      // Track all used IDs (from DB and CSV)
+      // Track all used IDs (from DB only)
       const usedIds = new Set(numericIds.map(String));
-      // Also add all member_ids from the CSV (if present and not empty)
-      csvData.forEach(row => {
-        if (row.member_id && row.member_id.trim() !== '') {
-          usedIds.add(row.member_id.trim());
-        }
-      });
 
       const today = new Date();
-      // Process CSV data into member objects
-      const members = await Promise.all(csvData.map(async (row) => {
+      const seenCsvIds = new Set<string>();
+      const skipped: { row: any; reason: string }[] = [];
+      const members: any[] = [];
+
+      for (let i = 0; i < csvData.length; i++) {
+        const row = csvData[i];
         let member_id = row.member_id && row.member_id.trim() !== '' ? row.member_id.trim() : undefined;
+        let isDuplicate = false;
+        let duplicateReason = '';
+        if (member_id) {
+          if (usedIds.has(member_id)) {
+            isDuplicate = true;
+            duplicateReason = `Duplicate member_id: ${member_id} (already exists)`;
+          } else if (seenCsvIds.has(member_id)) {
+            isDuplicate = true;
+            duplicateReason = `Duplicate member_id: ${member_id} (in CSV)`;
+          }
+        }
+        if (isDuplicate) {
+          skipped.push({ row, reason: duplicateReason });
+          continue;
+        }
         if (!member_id) {
           // Find the next unused running number
-          while (usedIds.has(String(nextId))) {
+          while (usedIds.has(String(nextId)) || seenCsvIds.has(String(nextId))) {
             nextId++;
           }
           member_id = String(nextId);
-          usedIds.add(member_id);
           nextId++;
         }
+        // Mark this member_id as seen in this import and as used
+        seenCsvIds.add(member_id);
+        usedIds.add(member_id);
 
         // Parse dates
         const parsedStartDate = parseDate(row.start_date);
@@ -188,8 +205,13 @@ const MemberImportPage = () => {
         let status = 'inactive';
         if (parsedEndDate) {
           const endDateObj = new Date(parsedEndDate);
-          if (!isNaN(endDateObj.getTime()) && endDateObj >= today) {
+          // Remove time part for accurate date-only comparison
+          const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const endDateOnly = new Date(endDateObj.getFullYear(), endDateObj.getMonth(), endDateObj.getDate());
+          if (!isNaN(endDateOnly.getTime()) && endDateOnly >= todayDateOnly) {
             status = 'active';
+          } else {
+            status = 'expired';
           }
         }
 
@@ -212,10 +234,20 @@ const MemberImportPage = () => {
           start_date: parsedStartDate || new Date().toISOString(),
           end_date: parsedEndDate
         };
-        return member;
-      }));
+        members.push(member);
+      }
 
-      console.log('Members to insert:', members); // Debug log
+      setSkippedRows(skipped);
+
+      if (members.length === 0) {
+        toast({
+          title: "No members imported",
+          description: "All rows were skipped due to duplicate IDs.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
 
       // Insert members into database
       const { error } = await supabase.from('members').insert(members);
@@ -225,9 +257,13 @@ const MemberImportPage = () => {
         throw error;
       }
 
+      let desc = `Successfully imported ${members.length} members.`;
+      if (skipped.length > 0) {
+        desc += ` Skipped ${skipped.length} row(s) due to duplicate IDs.`;
+      }
       toast({
         title: "Success",
-        description: `Successfully imported ${members.length} members`,
+        description: desc,
       });
 
       // Reset form
@@ -322,6 +358,36 @@ const MemberImportPage = () => {
                       {currentPreview.map((row, index) => (
                         <TableRow key={index}>
                           {Object.values(row).map((value: any, i) => (
+                            <TableCell key={i}>{value === null ? 'NULL' : value}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {skippedRows.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-red-600">Skipped Rows</h3>
+                <div className="border rounded-md overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Row #</TableHead>
+                        <TableHead>Reason</TableHead>
+                        {Object.keys(skippedRows[0].row).map((header) => (
+                          <TableHead key={header}>{header}</TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {skippedRows.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{idx + 1}</TableCell>
+                          <TableCell className="text-xs text-red-700">{item.reason}</TableCell>
+                          {Object.values(item.row).map((value: any, i) => (
                             <TableCell key={i}>{value === null ? 'NULL' : value}</TableCell>
                           ))}
                         </TableRow>

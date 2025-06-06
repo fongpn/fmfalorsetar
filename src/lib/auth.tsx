@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './supabase';
 import type { User, UserRole } from '@/types';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const lastProcessedUserId = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -38,7 +39,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Check if user is authenticated
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session?.user && isMounted) {
+      if (!isMounted) return;
+      
+      if (session?.user) {
+        // Skip if we've already processed this user
+        if (lastProcessedUserId.current === session.user.id) {
+          setIsLoading(false);
+          return;
+        }
+
         // Fetch user data from our users table
         const { data, error } = await supabase
           .from('users')
@@ -46,10 +55,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('id', session.user.id)
           .single();
           
+        if (!isMounted) return;
+          
         if (error) {
           console.error('Error fetching user:', error);
           await signOut();
-        } else if (data && isMounted) {
+        } else if (data) {
+          lastProcessedUserId.current = session.user.id;
           setUser(data as User);
         }
       }
@@ -70,6 +82,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (!isMounted) return;
+
+        // Skip if we've already processed this user
+        if (event === 'SIGNED_IN' && session?.user?.id === lastProcessedUserId.current) {
+          return;
+        }
 
         console.log('Auth state changed:', event, session?.user?.id);
         
@@ -137,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .eq('id', session.user.id);
               
             if (isMounted) {
+              lastProcessedUserId.current = session.user.id;
               setUser(data as User);
               console.log('User state updated, redirecting to dashboard');
               navigate('/', { replace: true });
@@ -144,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out');
+          lastProcessedUserId.current = null;
           setUser(null);
           navigate('/login');
         }
@@ -220,15 +239,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return requiredRoles.includes(user.role);
   };
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    isLoading,
+    signIn,
+    signOut,
+    resetPassword,
+    hasPermission,
+  }), [user, isLoading]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      signIn,
-      signOut,
-      resetPassword,
-      hasPermission,
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

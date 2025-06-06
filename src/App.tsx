@@ -1,7 +1,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster as ShadToaster } from '@/components/ui/toaster'; // Renamed to avoid conflict if you use useToast hook directly
-import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import type { AppSettings } from '@/types';
@@ -13,9 +12,19 @@ function AppContent() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const loadSettings = async () => {
+      // Only load settings if they haven't been loaded yet
+      if (settings !== null) {
+        setIsSettingsLoading(false);
+        return;
+      }
+
       try {
         const { data, error } = await supabase.rpc('get_settings');
+        
+        if (!isMounted) return;
         
         if (error) {
           console.error('Error loading settings:', error);
@@ -23,27 +32,35 @@ function AppContent() {
         }
 
         if (data) {
-          setSettings(data as AppSettings);
+          const appSettings = data as unknown as AppSettings;
+          setSettings(appSettings);
           
-          if (data.primary_color) {
-            document.documentElement.style.setProperty('--primary-color', data.primary_color);
+          if (appSettings.primary_color) {
+            document.documentElement.style.setProperty('--primary-color', appSettings.primary_color);
           }
           
-          if (data.logo_text) {
-            document.title = data.logo_text;
+          if (appSettings.logo_text) {
+            document.title = appSettings.logo_text;
           }
         }
       } catch (error) {
         console.error('Critical error loading settings:', error);
       } finally {
-        setIsSettingsLoading(false);
+        if (isMounted) {
+          setIsSettingsLoading(false);
+        }
       }
     };
     
     loadSettings();
-  }, []);
 
-  if (authLoading || isSettingsLoading) {
+    return () => {
+      isMounted = false;
+    };
+  }, [settings]);
+
+  // Only show loading spinner on initial load
+  if (authLoading && isSettingsLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -137,6 +154,12 @@ function AppContent() {
           <Route path="import-members" element={
             <ProtectedRoute allowedRoles={adminRoles}><MemberImportPage /></ProtectedRoute>
           } />
+          <Route path="close-shifts" element={
+            <ProtectedRoute allowedRoles={adminRoles}><CloseShiftsPage /></ProtectedRoute>
+          } />
+          <Route path="audit" element={
+            <ProtectedRoute allowedRoles={adminRoles}><AdminAuditPage /></ProtectedRoute>
+          } />
         </Route>
       </Route>
       
@@ -179,6 +202,8 @@ import AdminDeviceRequestsPage from '@/pages/admin/device-requests';
 import AdminActiveShiftsPage from '@/pages/admin/active-shifts';
 import AdminReportsPage from '@/pages/admin/reports';
 import MemberImportPage from '@/pages/admin/import-members';
+import CloseShiftsPage from '@/pages/admin/close-shifts';
+import AdminAuditPage from '@/pages/admin/audit';
 
 // Components
 import ProtectedRoute from '@/components/auth/protected-route';
@@ -193,14 +218,12 @@ import EditCouponPage from '@/pages/coupons/edit';
 function App() {
   return (
     <SettingsProvider>
-      <ThemeProvider defaultTheme="light" storageKey="membership-app-theme">
-        <Router>
-          <AuthProvider>
-            <AppContent />
-            <ShadToaster />
-          </AuthProvider>
-        </Router>
-      </ThemeProvider>
+      <Router>
+        <AuthProvider>
+          <AppContent />
+          <ShadToaster />
+        </AuthProvider>
+      </Router>
     </SettingsProvider>
   );
 }

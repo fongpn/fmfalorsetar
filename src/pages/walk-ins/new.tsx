@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'; // Added useEffect
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Wallet, QrCode, Banknote } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,13 +26,19 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 
+// Add prop types
+interface NewWalkInPageProps {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
 const formSchema = z.object({
-  name: z.string().optional(),
+  name: z.string().min(1, 'Name is required'),
   ageGroup: z.enum(['adult', 'youth']),
   paymentMethod: z.enum(['cash', 'qr', 'bank_transfer']),
 });
 
-const NewWalkInPage = () => {
+const NewWalkInPage = ({ onSuccess, onCancel }: NewWalkInPageProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -158,7 +164,11 @@ const NewWalkInPage = () => {
         description: 'Walk-in recorded successfully',
       });
 
-      navigate('/walk-ins');
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/walk-ins');
+      }
     } catch (error) {
       console.error('Error recording walk-in:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to record walk-in';
@@ -200,112 +210,131 @@ const NewWalkInPage = () => {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link to="/walk-ins">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold">New Walk-In</h1>
-      </div>
+    <div className="flex justify-center items-start min-h-[80vh] bg-gray-50 py-10">
+      <div className="w-full max-w-xl bg-white rounded-2xl shadow-lg p-8">
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" size="icon" asChild className="border-none shadow-none">
+            <Link to="/walk-ins">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-bold tracking-tight">New Walk-In</h1>
+        </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name (Optional)</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="John Doe" disabled={isSubmitting || isLoading} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="ageGroup"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Age Group</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={isSubmitting || isLoading || !settings}
-                >
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-medium">Name</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select age group" />
-                    </SelectTrigger>
+                    <Input {...field} placeholder="John Doe" disabled={isSubmitting || isLoading} className="rounded-lg bg-gray-100 focus:bg-white focus:ring-2 focus:ring-orange-400 border-none" />
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="adult">
-                      Adult (RM {settings?.adult_walk_in_price?.toFixed(2) ?? 'N/A'})
-                    </SelectItem>
-                    <SelectItem value="youth">
-                      Youth (RM {settings?.youth_walk_in_price?.toFixed(2) ?? 'N/A'})
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="paymentMethod"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Payment Method</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={isSubmitting || isLoading}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="qr">QR Payment</SelectItem>
-                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex gap-2">
-            <Button type="submit" disabled={isSubmitting || isLoading || !settings}>
-              {isSubmitting ? (
-                <div className="flex items-center">
-                  <LoadingSpinner size="sm" className="mr-2" /> {/* Corrected size prop */}
-                  <span>Processing</span>
-                </div>
-              ) : (
-                'Record Walk-In'
+                  <FormMessage />
+                </FormItem>
               )}
-            </Button>
-            
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/walk-ins')}
-              disabled={isSubmitting || isLoading}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </Form>
+            />
+
+            <FormField
+              control={form.control}
+              name="ageGroup"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-medium">Age Group</FormLabel>
+                  <div className="flex gap-3 mt-2">
+                    <Button
+                      type="button"
+                      variant={field.value === 'adult' ? 'default' : 'outline'}
+                      className={`rounded-md px-6 py-2 font-semibold transition-colors ${field.value === 'adult' ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-100 text-gray-700 hover:bg-orange-100'}`}
+                      onClick={() => field.onChange('adult')}
+                      disabled={isSubmitting || isLoading || !settings}
+                    >
+                      Adult (RM {settings?.adult_walk_in_price?.toFixed(2) ?? 'N/A'})
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={field.value === 'youth' ? 'default' : 'outline'}
+                      className={`rounded-md px-6 py-2 font-semibold transition-colors ${field.value === 'youth' ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-100 text-gray-700 hover:bg-orange-100'}`}
+                      onClick={() => field.onChange('youth')}
+                      disabled={isSubmitting || isLoading || !settings}
+                    >
+                      Youth (RM {settings?.youth_walk_in_price?.toFixed(2) ?? 'N/A'})
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="paymentMethod"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-medium">Payment Method</FormLabel>
+                  <div className="flex gap-3 mt-2">
+                    <Button
+                      type="button"
+                      variant={field.value === 'cash' ? 'default' : 'outline'}
+                      className={`rounded-md px-6 py-2 font-semibold transition-colors flex items-center gap-2 ${field.value === 'cash' ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-100 text-gray-700 hover:bg-orange-100'}`}
+                      onClick={() => field.onChange('cash')}
+                      disabled={isSubmitting || isLoading}
+                    >
+                      <Wallet className="w-4 h-4" />
+                      Cash
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={field.value === 'qr' ? 'default' : 'outline'}
+                      className={`rounded-md px-6 py-2 font-semibold transition-colors flex items-center gap-2 ${field.value === 'qr' ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-100 text-gray-700 hover:bg-orange-100'}`}
+                      onClick={() => field.onChange('qr')}
+                      disabled={isSubmitting || isLoading}
+                    >
+                      <QrCode className="w-4 h-4" />
+                      QR Payment
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={field.value === 'bank_transfer' ? 'default' : 'outline'}
+                      className={`rounded-md px-6 py-2 font-semibold transition-colors flex items-center gap-2 ${field.value === 'bank_transfer' ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-100 text-gray-700 hover:bg-orange-100'}`}
+                      onClick={() => field.onChange('bank_transfer')}
+                      disabled={isSubmitting || isLoading}
+                    >
+                      <Banknote className="w-4 h-4" />
+                      Bank Transfer
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex gap-3 mt-6">
+              <Button type="submit" disabled={isSubmitting || isLoading || !settings} className="rounded-full px-8 py-2 font-semibold bg-orange-500 hover:bg-orange-600 transition-colors">
+                {isSubmitting ? (
+                  <div className="flex items-center">
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    <span>Processing</span>
+                  </div>
+                ) : (
+                  'Record Walk-In'
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => { if (onCancel) { onCancel(); } else { navigate('/walk-ins'); } }}
+                disabled={isSubmitting || isLoading}
+                className="rounded-full px-8 py-2 font-semibold text-gray-500 hover:bg-gray-100 border-none shadow-none"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 };

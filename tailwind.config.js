@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ['class'],
   content: [
     './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
@@ -26,8 +25,8 @@ export default {
           foreground: 'hsl(var(--popover-foreground))',
         },
         primary: {
-          DEFAULT: 'var(--primary-color)', // Uses the CSS variable set by App.tsx or src/index.css
-          foreground: 'var(--primary-foreground)', // Uses the CSS variable from src/index.css
+          DEFAULT: 'var(--primary-color)',
+          foreground: 'var(--primary-foreground)',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
@@ -80,5 +79,5 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [],
 };

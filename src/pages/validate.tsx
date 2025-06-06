@@ -368,33 +368,52 @@ const ValidateMemberPage = () => {
             <DialogTitle>Multiple Members Found</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            {searchResults.map((result) => (
-              <Card
-                key={result.id}
-                className="cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => handleMemberSelect(result)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-lg">{result.name}</h3>
-                      <div className="text-sm text-gray-600">
-                        Member ID: {result.member_id}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        NRIC: {formatNRIC(result.nric)}
+            {searchResults.map((result) => {
+              let photoUrl: string | undefined = undefined;
+              if (result.photo_url) {
+                const { data } = supabase.storage.from('member-photos').getPublicUrl(result.photo_url);
+                photoUrl = data?.publicUrl;
+              }
+              return (
+                <Card
+                  key={result.id}
+                  className="cursor-pointer hover:bg-gray-50 transition-colors p-0"
+                  onClick={() => handleMemberSelect(result)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-8">
+                      {photoUrl ? (
+                        <img
+                          src={photoUrl}
+                          alt={result.name}
+                          className="w-[80px] h-[80px] object-cover rounded-2xl border-2 border-white shadow bg-gray-100"
+                          style={{ minWidth: 80, minHeight: 80 }}
+                        />
+                      ) : (
+                        <div className="w-[80px] h-[80px] flex items-center justify-center bg-gray-200 rounded-2xl text-gray-400 border-2 border-white shadow" style={{ minWidth: 80, minHeight: 80 }}>
+                          No Photo
+                        </div>
+                      )}
+                      <div className="flex-1 w-full">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-semibold text-lg flex items-center gap-2">{result.name}
+                            <Badge
+                              variant="outline"
+                              className={getMemberStatusColor(result.status) + ' text-xs px-2 py-0.5 rounded-full border-2'}
+                            >
+                              {result.status.charAt(0).toUpperCase() + result.status.slice(1)}
+                            </Badge>
+                          </h3>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Member ID: <span className="font-semibold">{result.member_id}</span>
+                        </div>
                       </div>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={getMemberStatusColor(result.status) + ' text-xs px-2 py-0.5 rounded-full border-2'}
-                    >
-                      {result.status.charAt(0).toUpperCase() + result.status.slice(1)}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>

@@ -9,11 +9,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePagination } from '@/lib/hooks/usePagination';
 import { formatDateTime, formatCurrency } from '@/lib/utils';
 import type { WalkIn } from '@/types';
+import NewWalkInPage from './new';
 
 const WalkInsListPage = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [walkIns, setWalkIns] = useState<WalkIn[]>([]);
+  const [showForm, setShowForm] = useState(false);
 
   const {
     paginatedData,
@@ -48,13 +50,25 @@ const WalkInsListPage = () => {
     fetchWalkIns();
   }, []);
 
+  // Handler to refresh walk-ins after a new walk-in is recorded
+  const handleRefresh = () => {
+    setIsLoading(true);
+    supabase
+      .from('walk_ins')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) setWalkIns(data as WalkIn[]);
+        setIsLoading(false);
+      });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Walk-Ins</h1>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          New Walk-In
+        <Button onClick={() => setShowForm(true)}>
+          Walk In
         </Button>
       </div>
 
@@ -130,6 +144,22 @@ const WalkInsListPage = () => {
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal Overlay for New Walk-In */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="relative w-full max-w-xl">
+            <div className="absolute top-4 right-4 z-10">
+              <Button variant="outline" onClick={() => setShowForm(false)}>
+                Walk In List
+              </Button>
+            </div>
+            <div className="bg-white rounded-2xl shadow-2xl p-0">
+              <NewWalkInPage onSuccess={() => { setShowForm(false); handleRefresh(); }} onCancel={() => setShowForm(false)} />
+            </div>
+          </div>
         </div>
       )}
     </div>
