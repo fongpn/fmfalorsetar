@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 
 import { useAuth } from '@/lib/auth';
 
@@ -720,6 +721,16 @@ const ValidateMemberPage = () => {
 
         </Button>
 
+        <Link href="/checkins" passHref legacyBehavior>
+
+          <Button variant="secondary" className="text-sm px-3 py-1.5 h-8 min-w-[120px]">
+
+            View All Check-ins
+
+          </Button>
+
+        </Link>
+
       </div>
 
 
@@ -984,7 +995,7 @@ const ValidateMemberPage = () => {
 
                 {isCheckedIn && (
 
-                  <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-4 rounded-lg text-lg font-semibold">
+                  <div className="bg-white text-green-700 border border-green-300 p-4 rounded-lg text-lg font-semibold shadow">
 
                     Already checked in today
 
