@@ -36,7 +36,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDebounce } from '../../hooks/use-debounce';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { auditHelpers } from '@/lib/audit';
@@ -859,4 +859,14 @@ const CloseShiftsPage = () => {
                   )}
                 </div>
               ))}
-            
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default CloseShiftsPage; 
+
+export default CloseShiftsPage
