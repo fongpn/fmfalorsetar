@@ -859,14 +859,3 @@ const CloseShiftsPage = () => {
                   )}
                 </div>
               ))}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default CloseShiftsPage; 
-
-export default CloseShiftsPage
