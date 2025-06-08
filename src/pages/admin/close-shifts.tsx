@@ -867,4 +867,4 @@ const CloseShiftsPage = () => {
   );
 };
 
-export default CloseShiftsPage;
+export default CloseShiftsPage; 
