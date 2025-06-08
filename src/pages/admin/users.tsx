@@ -80,20 +80,36 @@ const UsersPage = () => {
     if (!adminUser) return;
     setIsProcessing(true);
     try {
-      // Call the new Edge Function
-      const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: {
-          email: newUser.email,
-          password: newUser.password,
-          role: newUser.role,
-          name: newUser.name,
-          // admin_id: adminUser.id, // The Edge Function will use the authenticated user context or you can pass it if needed for its internal logic
-        },
-      });
+      // Get the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) throw sessionError;
+      if (!session) throw new Error('No active session');
 
-      if (error) throw error;
-      // Assuming the edge function returns { success: true } or throws error
-      // Or if it returns the new user data, you could use it.
+      // Make a direct fetch request to the Edge Function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            email: newUser.email,
+            password: newUser.password,
+            role: newUser.role,
+            name: newUser.name,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+
+      const data = await response.json();
 
       toast({
         title: 'Success',

@@ -148,21 +148,23 @@ const CloseShiftsPage = () => {
   // Fetch available users for handover
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!user?.id) return; // Prevents running with undefined id
       const { data, error } = await supabase
         .from('users')
         .select('id, name, email')
         .eq('role', 'cashier')
-        .neq('id', user?.id);
+        .neq('id', user.id);
 
       if (error) {
         console.error('Error fetching users:', error);
         return;
       }
 
+      console.log('Available users for handover:', data); // Debug log
       setAvailableUsers(data || []);
     };
 
-    if (showHandoverDialog) {
+    if (showHandoverDialog && user?.id) {
       fetchUsers();
     }
   }, [showHandoverDialog, user?.id]);
