@@ -19,8 +19,8 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 h-screen bg-white border-r border-gray-200">
-      <div className="flex items-center justify-center px-4 py-2 w-full">
-        <Logo className="w-full h-24 object-contain" />
+      <div className="flex items-center justify-center px-4 py-6 w-full">
+        <Logo className="h-16 w-auto max-w-[140px] object-contain" />
       </div>
       <nav className="mt-4">
         <ul className="space-y-2">

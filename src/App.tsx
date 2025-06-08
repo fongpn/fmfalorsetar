@@ -105,6 +105,9 @@ function AppContent() {
         {/* Validate */}
         <Route path="validate" element={<ValidateMemberPage />} />
         
+        {/* Check-ins */}
+        <Route path="checkins" element={<CheckinsPage />} />
+        
         {/* Walk-Ins */}
         <Route path="walk-ins">
           <Route index element={<NewWalkInPage />} />
@@ -214,6 +217,7 @@ import CouponsListPage from '@/pages/coupons/list';
 import NewCouponPage from '@/pages/coupons/new';
 import CouponDetailsPage from '@/pages/coupons/details';
 import EditCouponPage from '@/pages/coupons/edit';
+import CheckinsPage from '@/pages/checkins';
 
 function App() {
   return (

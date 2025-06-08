@@ -130,12 +130,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ settings }) => {
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar for desktop */}
       <aside className="hidden md:flex md:w-64 flex-col fixed inset-y-0 z-50 border-r border-gray-200 bg-white">
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <Link to="/" className="flex items-center space-x-2">
+        <div className="flex items-center justify-center h-20 px-6 border-b border-gray-200">
+          <Link to="/" className="flex items-center justify-center w-full">
             {settings?.logo_url ? (
-              <img src={settings.logo_url} alt="Logo" className="h-8 w-8 object-contain" />
+              <img src={settings.logo_url} alt="Logo" className="h-14 w-auto max-w-[160px] object-contain mx-auto" />
             ) : (
-              <ShieldCheck className="h-6 w-6 text-primary" />
+              <ShieldCheck className="h-8 w-8 text-primary mx-auto" />
             )}
           </Link>
         </div>
@@ -224,28 +224,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ settings }) => {
       </aside>
 
       {/* Mobile menu button */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
-        <div className="flex items-center space-x-2">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center h-20 px-4 bg-white border-b border-gray-200">
+        <div className="flex items-center justify-center w-full">
           {settings?.logo_url ? (
-            <img src={settings.logo_url} alt="Logo" className="h-8 w-8 object-contain" />
+            <img src={settings.logo_url} alt="Logo" className="h-14 w-auto max-w-[160px] object-contain mx-auto" />
           ) : (
-            <ShieldCheck className="h-6 w-6 text-primary" />
+            <ShieldCheck className="h-8 w-8 text-primary mx-auto" />
           )}
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </Button>
         </div>
       </div>
 
