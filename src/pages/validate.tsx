@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 
 import { useAuth } from '@/lib/auth';
 
@@ -721,7 +721,7 @@ const ValidateMemberPage = () => {
 
         </Button>
 
-        <Link href="/checkins" passHref legacyBehavior>
+        <Link to="/checkins">
 
           <Button variant="secondary" className="text-sm px-3 py-1.5 h-8 min-w-[120px]">
 
