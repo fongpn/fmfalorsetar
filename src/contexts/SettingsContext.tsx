@@ -20,9 +20,20 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const fetchSettings = async () => {
     setIsLoading(true);
-    const { data } = await supabase.rpc('get_settings');
-    setSettings(data as AppSettings);
-    setIsLoading(false);
+    try {
+      const { data, error } = await supabase.rpc('get_settings');
+      if (error) {
+        console.error('Error fetching settings:', error);
+        return;
+      }
+      if (data) {
+        setSettings(data as AppSettings);
+      }
+    } catch (error) {
+      console.error('Error in settings context:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {

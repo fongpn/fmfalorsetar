@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -36,7 +36,7 @@ const LoginPage = () => {
   const [appSettings, setAppSettings] = useState<{ logo_text?: string; logo_icon?: string } | null>(null);
 
   // Load app settings for branding
-  useState(() => {
+  useEffect(() => {
     const fetchSettings = async () => {
       try {
         const { data: settings } = await supabase.rpc('get_settings');
@@ -52,7 +52,7 @@ const LoginPage = () => {
     };
     
     fetchSettings();
-  });
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
