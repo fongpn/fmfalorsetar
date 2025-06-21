@@ -128,12 +128,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.warn('Supabase sign out error (session may already be invalid):', error);
+      }
     } catch (error) {
-      console.error('Sign out error:', error);
-      // Force clear local state even if signOut fails
+      console.warn('Sign out error (session may already be invalid):', error);
+    } finally {
+      // Always clear local state regardless of API call success/failure
       setUser(null);
       setSession(null);
+      setProfile(null);
     }
   };
 
