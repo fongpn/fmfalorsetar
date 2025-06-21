@@ -12,7 +12,6 @@ import {
   FileText,
   Download,
   Upload,
-  LogOut,
   Dumbbell
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,7 +31,7 @@ const allNavigation = [
 ];
 
 export function Sidebar() {
-  const { signOut, profile } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
 
   // Filter navigation items based on user role
@@ -42,14 +41,6 @@ export function Sidebar() {
     }
     return true;
   });
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
 
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
@@ -89,23 +80,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      {/* User Info and Sign Out */}
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-sm font-medium">{profile?.full_name}</p>
-            <p className="text-xs text-gray-400">{profile?.role}</p>
-          </div>
-        </div>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center w-full px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
-        >
-          <LogOut className="mr-3 h-4 w-4" />
-          Sign Out
-        </button>
-      </div>
     </div>
   );
 
