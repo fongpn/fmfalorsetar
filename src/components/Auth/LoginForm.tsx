@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Dumbbell, Eye, EyeOff } from 'lucide-react';
+import { settingsService } from '../../services/settingsService';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,34 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { signIn } = useAuth();
+  const [gymName, setGymName] = useState('FMF Gym');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  React.useEffect(() => {
+    // Load gym name and logo from settings
+    const loadSettings = async () => {
+      try {
+        setLoadingSettings(true);
+        const gymNameSetting = await settingsService.getSetting('gym_name');
+        const logoUrlSetting = await settingsService.getSetting('gym_logo_url');
+        
+        if (gymNameSetting) {
+          setGymName(gymNameSetting);
+        }
+        
+        if (logoUrlSetting) {
+          setLogoUrl(logoUrlSetting);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+    
+    loadSettings();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,12 +57,20 @@ export function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="flex justify-center">
-            <div className="p-3 bg-orange-600 rounded-full">
-              <Dumbbell className="h-8 w-8 text-white" />
-            </div>
+          <div className="flex justify-center mb-4">
+            {logoUrl ? (
+              <img 
+                src={logoUrl} 
+                alt="Gym Logo" 
+                className="h-20 w-20 object-contain"
+              />
+            ) : (
+              <div className="p-3 bg-orange-600 rounded-full">
+                <Dumbbell className="h-8 w-8 text-white" />
+              </div>
+            )}
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">FMF Gym</h2>
+          <h2 className="mt-2 text-3xl font-bold text-gray-900">{gymName}</h2>
           <p className="mt-2 text-sm text-gray-600">Management System</p>
           <p className="mt-1 text-xs text-gray-500">Sign in to your staff account</p>
         </div>

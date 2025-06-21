@@ -9,6 +9,7 @@ export interface SystemSetting {
 export interface SettingsData {
   // General Settings
   gym_name: string;
+  gym_logo_url: string;
   gym_address: string;
   gym_phone: string;
   gym_email: string;
@@ -51,6 +52,7 @@ class SettingsService {
       return {
         // General Settings
         gym_name: settingsMap.gym_name || 'FMF Gym',
+        gym_logo_url: settingsMap.gym_logo_url || '',
         gym_address: settingsMap.gym_address || '123 Fitness Street, City, State 12345',
         gym_phone: settingsMap.gym_phone || '+60 12-345 6789',
         gym_email: settingsMap.gym_email || 'info@fmfgym.com',
@@ -85,6 +87,7 @@ class SettingsService {
       const settingsArray: SystemSetting[] = [
         // General Settings
         { key: 'gym_name', value: settings.gym_name, description: 'Gym name displayed throughout the system' },
+        { key: 'gym_logo_url', value: settings.gym_logo_url, description: 'URL or base64 data for the gym logo' },
         { key: 'gym_address', value: settings.gym_address, description: 'Physical address of the gym' },
         { key: 'gym_phone', value: settings.gym_phone, description: 'Primary contact phone number' },
         { key: 'gym_email', value: settings.gym_email, description: 'Primary contact email address' },
