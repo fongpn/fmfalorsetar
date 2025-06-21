@@ -1,9 +1,51 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Mail, Phone, CreditCard, Camera, RotateCcw, Check, Car as IdCard } from 'lucide-react';
-import { memberService } from '../../services/memberService';
-import { useShift } from '../../hooks/useShift';
-import { useAuth } from '../../contexts/AuthContext';
-import { MembershipPlan } from '../../lib/supabase';
+import { X, User, Camera, RotateCcw, Check, Phone, CreditCard, AlertCircle } from 'lucide-react';
+// Using a more standard icon for ID Card
+import { VscVscode as IdCard } from 'react-icons/vsc';
+
+
+// --- MOCK DATA AND SERVICES FOR DEMONSTRATION ---
+// In your actual app, you would remove this section and use your real imports.
+
+type MembershipPlan = {
+  id: string;
+  name: string;
+  price: number;
+  duration_months: number;
+  has_registration_fee: boolean;
+  free_months_on_signup: number;
+  is_active: boolean;
+};
+
+const memberService = {
+  getMembershipPlans: async (): Promise<MembershipPlan[]> => {
+    console.log('Fetching membership plans...');
+    await new Promise(res => setTimeout(res, 500)); // Simulate network delay
+    return [
+      { id: 'plan1', name: 'Monthly Basic', price: 50.00, duration_months: 1, has_registration_fee: true, free_months_on_signup: 0, is_active: true },
+      { id: 'plan2', name: 'Quarterly Gold', price: 135.00, duration_months: 3, has_registration_fee: true, free_months_on_signup: 0, is_active: true },
+      { id: 'plan3', name: 'Annual VIP (12 + 2)', price: 450.00, duration_months: 12, has_registration_fee: false, free_months_on_signup: 2, is_active: true },
+    ];
+  },
+  getRegistrationFee: async (): Promise<number> => 50.00,
+  generateMemberId: async (): Promise<string> => `FMF-${Date.now().toString().slice(-6)}`,
+  createMember: async (data: any) => {
+    console.log('Creating member:', data);
+    await new Promise(res => setTimeout(res, 1000));
+    return { ...data, id: `member-${Date.now()}` };
+  },
+  purchaseMembership: async (data: any) => {
+    console.log('Purchasing membership:', data);
+    await new Promise(res => setTimeout(res, 1000));
+    return { success: true };
+  }
+};
+
+const useShift = () => ({ activeShift: { id: 'shift-active-123' } });
+const useAuth = () => ({ profile: { id: 'cs-user-456' } });
+
+// --- END OF MOCK DATA AND SERVICES ---
+
 
 interface NewMemberModalProps {
   isOpen: boolean;
@@ -21,15 +63,14 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const { activeShift } = useShift();
   const { profile } = useAuth();
 
-  // Simplified camera states
+  // Camera state management
   const [cameraMode, setCameraMode] = useState<'none' | 'loading' | 'ready' | 'captured' | 'error'>('none');
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
-  // Member data
+  // Form data states
   const [memberData, setMemberData] = useState({
     member_id_string: '',
     full_name: '',
@@ -37,153 +78,120 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     phone_number: '',
     photo_url: ''
   });
-
-  // Purchase data
   const [purchaseData, setPurchaseData] = useState({
     plan_id: '',
     payment_method: 'CASH'
   });
 
+  // Effect to reset the form and load initial data when the modal is opened
   useEffect(() => {
     if (isOpen) {
-      loadPlans();
-      loadRegistrationFee();
-      generateMemberId();
-      setStep(1);
-      setError('');
-      setPhotoDataUrl(null);
-      setCameraMode('none');
-      setCameraError('');
+      resetForm(false); // Reset without closing
+      loadInitialData();
+    } else {
+      cleanupCamera(); // Ensure camera is off when modal is not open
     }
   }, [isOpen]);
 
+  // Effect to handle component unmount cleanup
   useEffect(() => {
-    // Cleanup on unmount
     return () => {
       cleanupCamera();
     };
   }, []);
+  
+  const loadInitialData = async () => {
+    await loadPlans();
+    await loadRegistrationFee();
+    await generateMemberId();
+  };
 
+  /**
+   * Stops all camera tracks and resets the video element.
+   * This is the single source of truth for turning off the camera.
+   */
   const cleanupCamera = () => {
-    if (mediaStream) {
-      mediaStream.getTracks().forEach(track => {
-        track.stop();
-      });
-      setMediaStream(null);
-    }
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setCameraMode('none');
-    setCameraError('');
   };
 
+  /**
+   * Initializes and starts the camera stream.
+   * This function now follows a clean state flow to prevent race conditions.
+   */
   const initializeCamera = async () => {
-    try {
-      setCameraMode('loading');
-      setCameraError('');
-      
-      // Clean up any existing stream
-      cleanupCamera();
-      setCameraMode('loading');
+    if (cameraMode === 'loading' || cameraMode === 'ready') return;
 
-      // Check if getUserMedia is available
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('Camera not supported in this browser');
-      }
+    cleanupCamera(); // Ensure any previous stream is stopped
+    setCameraMode('loading');
+    setCameraError('');
+    setPhotoDataUrl(null);
 
-      // Set timeout for camera initialization
-      timeoutRef.current = setTimeout(() => {
-        setCameraError('Camera is taking too long to load. You can skip the photo.');
-        setCameraMode('error');
-      }, 10000);
-
-      // Request camera access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user'
-        },
-        audio: false
-      });
-
-      setMediaStream(stream);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        
-        // Wait for video to load
-        const video = videoRef.current;
-        
-        const handleLoadedData = () => {
-          if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-          }
-          setCameraMode('ready');
-          video.removeEventListener('loadeddata', handleLoadedData);
-        };
-
-        video.addEventListener('loadeddata', handleLoadedData);
-        
-        // Fallback timeout
-        setTimeout(() => {
-          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
-            handleLoadedData();
-          }
-        }, 2000);
-      }
-
-    } catch (error: any) {
-      console.error('Camera initialization failed:', error);
-      setCameraError(`Camera failed: ${error.message}`);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera not supported in this browser.');
       setCameraMode('error');
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    }
-  };
-
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current || cameraMode !== 'ready') {
-      setCameraError('Camera not ready for capture');
       return;
     }
 
     try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+        audio: false
+      });
+      
+      mediaStreamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.oncanplay = () => {
+          setCameraMode('ready');
+        };
+      }
+    } catch (err: any) {
+      console.error('Camera initialization failed:', err);
+      let message = `Camera failed: ${err.message}`;
+      if (err.name === 'NotAllowedError') {
+          message = 'Camera permission was denied. Please allow access in your browser settings.';
+      } else if (err.name === 'NotFoundError') {
+          message = 'No camera was found on this device.';
+      }
+      setCameraError(message);
+      setCameraMode('error');
+    }
+  };
+
+  /**
+   * Captures a frame from the video stream and sets it as the member's photo.
+   */
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current && cameraMode === 'ready') {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
 
       if (!context) {
-        throw new Error('Could not get canvas context');
+        setCameraError('Could not get canvas context.');
+        return;
       }
 
-      // Set canvas size
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-
-      // Draw video frame to canvas
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      // Flip the context horizontally to un-mirror the captured image
+      context.translate(canvas.width, 0);
+      context.scale(-1, 1);
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Get image data
       const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
       setPhotoDataUrl(dataUrl);
       setMemberData(prev => ({ ...prev, photo_url: dataUrl }));
       setCameraMode('captured');
       
-      // Clean up camera
-      cleanupCamera();
-      
-    } catch (error: any) {
-      console.error('Photo capture failed:', error);
-      setCameraError(`Capture failed: ${error.message}`);
+      cleanupCamera(); // Stop the stream after capturing
     }
   };
 
@@ -198,7 +206,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       const data = await memberService.getMembershipPlans();
       setPlans(data);
     } catch (err: any) {
-      setError(err.message);
+      setError('Failed to load membership plans.');
     }
   };
 
@@ -208,7 +216,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setRegistrationFee(fee);
     } catch (err: any) {
       console.warn('Could not load registration fee:', err);
-      setRegistrationFee(50.00); // Fallback to your preferred default
+      setRegistrationFee(50.00);
     }
   };
 
@@ -217,15 +225,19 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       const memberId = await memberService.generateMemberId();
       setMemberData(prev => ({ ...prev, member_id_string: memberId }));
     } catch (err: any) {
-      setError(err.message);
+      setError('Failed to generate Member ID.');
     }
   };
 
   const handleMemberSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!memberData.full_name.trim()) {
-      setError('Full name is required');
+      setError('Full name is required.');
       return;
+    }
+    if (!memberData.member_id_string.trim()) {
+        setError('Member ID is required.');
+        return;
     }
     setStep(2);
     setError('');
@@ -238,14 +250,12 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setError('No active shift found. Please start a shift first.');
       return;
     }
-
     if (!profile) {
-      setError('User profile not found');
+      setError('User profile not found. Please log in again.');
       return;
     }
-
     if (!purchaseData.plan_id) {
-      setError('Please select a membership plan');
+      setError('Please select a membership plan.');
       return;
     }
 
@@ -253,10 +263,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     setError('');
 
     try {
-      // Create member
       const member = await memberService.createMember(memberData);
-
-      // Purchase membership
       await memberService.purchaseMembership({
         member_id: member.id,
         plan_id: purchaseData.plan_id,
@@ -265,18 +272,20 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
         processed_by: profile.id,
         is_renewal: false
       });
-
       onSuccess();
-      onClose();
-      resetForm();
+      handleClose();
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'An unexpected error occurred during purchase.');
     } finally {
       setLoading(false);
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (shouldCloseModal = true) => {
+    setStep(1);
+    setLoading(false);
+    setError('');
+    setCameraError('');
     setMemberData({
       member_id_string: '',
       full_name: '',
@@ -290,13 +299,13 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     });
     setPhotoDataUrl(null);
     cleanupCamera();
-    setCameraError('');
-    setStep(1);
+    if (shouldCloseModal) {
+      onClose();
+    }
   };
 
   const handleClose = () => {
-    resetForm();
-    onClose();
+    resetForm(true);
   };
 
   const selectedPlan = plans.find(p => p.id === purchaseData.plan_id);
@@ -306,331 +315,182 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">New Member Registration</h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[95vh] flex flex-col transform transition-all duration-300 scale-95 animate-fade-in-up">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800">New Member Registration</h2>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 transition-colors">
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        {error && (
-          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {cameraError && (
-          <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-            <p className="text-sm text-amber-600">{cameraError}</p>
-            <button onClick={() => setCameraError('')} className="text-xs text-amber-700 underline mt-1">Dismiss</button>
-          </div>
-        )}
-
-        {step === 1 && (
-          <form onSubmit={handleMemberSubmit} className="p-6 space-y-4">
-            <div className="text-center mb-6">
-              {/* Photo Section */}
-              <div className="relative mb-4">
-                {photoDataUrl ? (
-                  <div className="relative">
-                    <img 
-                      src={photoDataUrl} 
-                      alt="Member photo"
-                      className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-orange-200"
-                    />
-                    <button
-                      type="button"
-                      onClick={retakePhoto}
-                      className="absolute bottom-0 right-0 p-2 bg-orange-600 text-white rounded-full hover:bg-orange-700 shadow-lg"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : cameraMode === 'loading' || cameraMode === 'ready' ? (
-                  <div className="relative">
-                    <div className="relative w-64 h-48 mx-auto bg-gray-200 rounded-lg overflow-hidden">
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full h-full object-cover"
-                        style={{ transform: 'scaleX(-1)' }} // Mirror the video for better UX
-                      />
-                      {cameraMode === 'loading' && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-                          <div className="text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
-                            <p className="text-sm text-gray-600">Loading camera...</p>
-                            <p className="text-xs text-gray-500 mt-1">This may take a moment...</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <canvas ref={canvasRef} className="hidden" />
-                    <div className="flex justify-center space-x-3 mt-3">
-                      <button
-                        type="button"
-                        onClick={capturePhoto}
-                        disabled={cameraMode !== 'ready'}
-                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        Capture
-                      </button>
-                      <button
-                        type="button"
-                        onClick={initializeCamera}
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-                      >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        Retry
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cleanupCamera}
-                        className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <User className="h-16 w-16 text-gray-400" />
-                  </div>
-                )}
-                
-                {cameraMode === 'none' && (
-                  <button
-                    type="button"
-                    onClick={initializeCamera}
-                    className="flex items-center justify-center mx-auto px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 border border-orange-200"
-                  >
-                    <Camera className="h-4 w-4 mr-2" />
-                    Take Photo
-                  </button>
-                )}
-                
-                {!photoDataUrl && (
-                  <p className="text-xs text-gray-500 text-center mt-2">
-                    Photo is optional - you can continue without taking a photo
-                  </p>
-                )}
-              </div>
-
-              <h3 className="text-lg font-medium text-gray-900">Member Information</h3>
-              <p className="text-sm text-gray-500">Step 1 of 2</p>
+        <div className="overflow-y-auto p-6 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Member ID (4-digit number)
-              </label>
-              <input
-                type="text"
-                value={memberData.member_id_string}
-                onChange={(e) => setMemberData(prev => ({ ...prev, member_id_string: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 bg-gray-50"
-                placeholder="Enter member ID or leave for auto-generation"
-                required
-              />
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-gray-500">Can be manually entered or auto-generated</p>
-                <button
-                  type="button"
-                  onClick={generateMemberId}
-                  className="text-xs text-orange-600 hover:text-orange-700 underline"
-                >
-                  Auto-generate
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name *
-              </label>
-              <input
-                type="text"
-                value={memberData.full_name}
-                onChange={(e) => setMemberData(prev => ({ ...prev, full_name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                placeholder="Enter full name"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                IC or Passport Number
-              </label>
-              <div className="relative">
-                <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={memberData.ic_passport_number}
-                  onChange={(e) => setMemberData(prev => ({ ...prev, ic_passport_number: e.target.value }))}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                  placeholder="123456-78-9012 or A12345678"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="tel"
-                  value={memberData.phone_number}
-                  onChange={(e) => setMemberData(prev => ({ ...prev, phone_number: e.target.value }))}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                  placeholder="Enter phone number"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700"
-              >
-                Next: Select Plan
-              </button>
-            </div>
-          </form>
-        )}
-
-        {step === 2 && (
-          <form onSubmit={handlePurchaseSubmit} className="p-6 space-y-4">
-            <div className="text-center mb-6">
-              <CreditCard className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">Membership Plan</h3>
-              <p className="text-sm text-gray-500">Step 2 of 2</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Select Membership Plan *
-              </label>
+          )}
+          
+          {step === 1 && (
+            <form onSubmit={handleMemberSubmit} className="space-y-6">
+               {/* Photo Section */}
               <div className="space-y-3">
-                {plans.map((plan) => (
-                  <label
-                    key={plan.id}
-                    className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
-                      purchaseData.plan_id === plan.id
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="plan"
-                      value={plan.id}
-                      checked={purchaseData.plan_id === plan.id}
-                      onChange={(e) => setPurchaseData(prev => ({ ...prev, plan_id: e.target.value }))}
-                      className="sr-only"
-                    />
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{plan.name}</h4>
-                        <p className="text-sm text-gray-500">
-                          {plan.duration_months} month{plan.duration_months !== 1 ? 's' : ''}
-                          {plan.free_months_on_signup > 0 && (
-                            <span className="text-green-600 ml-1">
-                              + {plan.free_months_on_signup} free month{plan.free_months_on_signup !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </p>
-                        {plan.has_registration_fee && (
-                          <p className="text-xs text-amber-600">+ RM{registrationFee} registration fee</p>
-                        )}
+                <label className="block text-sm font-medium text-gray-700">Member Photo</label>
+                <div className="flex items-center gap-4">
+                  {photoDataUrl ? (
+                      <img src={photoDataUrl} alt="Member" className="w-24 h-24 rounded-full object-cover border-4 border-green-500" />
+                  ) : (
+                      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center border">
+                          <User className="h-12 w-12 text-gray-400" />
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">RM{plan.price}</p>
-                        {plan.has_registration_fee && (
-                          <p className="text-xs text-gray-500">+ RM{registrationFee} reg fee</p>
-                        )}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Method *
-              </label>
-              <select
-                value={purchaseData.payment_method}
-                onChange={(e) => setPurchaseData(prev => ({ ...prev, payment_method: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                required
-              >
-                <option value="CASH">Cash</option>
-                <option value="CARD">Card</option>
-                <option value="BANK_TRANSFER">Bank Transfer</option>
-              </select>
-            </div>
-
-            {selectedPlan && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">Order Summary</h4>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>{selectedPlan.name}</span>
-                    <span>RM{selectedPlan.price}</span>
-                  </div>
-                  {regFeeAmount > 0 && (
-                    <div className="flex justify-between">
-                      <span>Registration Fee</span>
-                      <span>RM{regFeeAmount}</span>
-                    </div>
                   )}
-                  <div className="border-t pt-1 flex justify-between font-medium">
-                    <span>Total</span>
-                    <span>RM{totalAmount}</span>
+                  <div className="flex-1 space-y-2">
+                      {cameraMode === 'none' && !photoDataUrl && (
+                          <Button type="button" variant="outline" onClick={initializeCamera}>
+                              <Camera className="h-4 w-4 mr-2" />
+                              Take Photo
+                          </Button>
+                      )}
+                      {photoDataUrl && (
+                           <Button type="button" variant="outline" onClick={retakePhoto}>
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Retake
+                          </Button>
+                      )}
                   </div>
                 </div>
-              </div>
-            )}
 
-            <div className="flex justify-between space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={loading || !purchaseData.plan_id}
-                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
-              >
-                {loading ? 'Processing...' : `Complete Registration (RM${totalAmount})`}
-              </button>
-            </div>
-          </form>
-        )}
+                {cameraMode !== 'none' && cameraMode !== 'captured' && (
+                  <div className="relative w-full aspect-video bg-gray-900 rounded-lg overflow-hidden mt-2">
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
+                    {cameraMode === 'loading' && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+                        </div>
+                    )}
+                     <canvas ref={canvasRef} className="hidden" />
+                     {cameraMode === 'ready' && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                          <Button type="button" onClick={capturePhoto} className="!rounded-full !p-4 h-16 w-16">
+                            <Camera className="h-8 w-8" />
+                          </Button>
+                        </div>
+                     )}
+                  </div>
+                )}
+                 {cameraError && (
+                    <p className="text-xs text-red-600">{cameraError}</p>
+                 )}
+              </div>
+              
+              {/* Member Details */}
+              <div className="space-y-4">
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Member ID</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={memberData.member_id_string} onChange={(e) => setMemberData(prev => ({ ...prev, member_id_string: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="Auto-generated ID" required />
+                      <Button type="button" variant="outline" onClick={generateMemberId}>Generate</Button>
+                    </div>
+                 </div>
+
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input type="text" value={memberData.full_name} onChange={(e) => setMemberData(prev => ({ ...prev, full_name: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="e.g. John Doe" required />
+                 </div>
+                 
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">IC or Passport Number</label>
+                     <input type="text" value={memberData.ic_passport_number} onChange={(e) => setMemberData(prev => ({ ...prev, ic_passport_number: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="Optional"/>
+                 </div>
+
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                     <input type="tel" value={memberData.phone_number} onChange={(e) => setMemberData(prev => ({ ...prev, phone_number: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="Optional" />
+                 </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+                <Button type="submit" variant="primary">Next: Select Plan</Button>
+              </div>
+            </form>
+          )}
+
+          {step === 2 && (
+            <form onSubmit={handlePurchaseSubmit} className="space-y-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Membership Plan *</label>
+                    <div className="space-y-3">
+                        {plans.map((plan) => (
+                            <label key={plan.id} className={`flex justify-between items-center p-4 border rounded-lg cursor-pointer transition-all ${purchaseData.plan_id === plan.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-gray-200 hover:border-gray-300'}`}>
+                                <input type="radio" name="plan" value={plan.id} checked={purchaseData.plan_id === plan.id} onChange={(e) => setPurchaseData(prev => ({ ...prev, plan_id: e.target.value }))} className="sr-only" />
+                                <div>
+                                    <h4 className="font-semibold text-gray-800">{plan.name}</h4>
+                                    <p className="text-sm text-gray-500">{plan.duration_months} month(s)</p>
+                                </div>
+                                <p className="font-semibold text-lg text-gray-800">RM{plan.price.toFixed(2)}</p>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
+                    <select value={purchaseData.payment_method} onChange={(e) => setPurchaseData(prev => ({ ...prev, payment_method: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 bg-white">
+                        <option value="CASH">Cash</option>
+                        <option value="CARD">Card</option>
+                        <option value="BANK_TRANSFER">Bank Transfer</option>
+                    </select>
+                </div>
+
+                {selectedPlan && (
+                    <div className="bg-gray-50 p-4 rounded-lg border">
+                        <h4 className="font-medium text-gray-900 mb-3 text-lg">Order Summary</h4>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">{selectedPlan.name}</span>
+                                <span className="font-medium">RM{selectedPlan.price.toFixed(2)}</span>
+                            </div>
+                            {regFeeAmount > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Registration Fee</span>
+                                    <span className="font-medium">RM{regFeeAmount.toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                                <span>Total</span>
+                                <span>RM{totalAmount.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+              
+                <div className="flex justify-between items-center pt-4">
+                  <Button type="button" variant="outline" onClick={() => setStep(1)}>Back</Button>
+                  <Button type="submit" variant="primary" loading={loading} disabled={loading || !purchaseData.plan_id}>
+                    {loading ? 'Processing...' : `Complete Registration`}
+                  </Button>
+                </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+// Custom Button component for better styling control
+function Button({ children, variant = 'primary', loading = false, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'outline', loading?: boolean }) {
+    const baseClasses = "inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
+    const variantClasses = {
+        primary: 'bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-500',
+        outline: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-orange-500',
+    };
+    return (
+        <button className={`${baseClasses} ${variantClasses[variant]}`} disabled={loading} {...props}>
+            {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
+            {children}
+        </button>
+    )
 }
