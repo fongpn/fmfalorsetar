@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
+import { NewCouponTemplateModal } from '../components/Coupons/NewCouponTemplateModal';
+import { SellCouponModal } from '../components/Coupons/SellCouponModal';
 import { Plus, Search, Ticket, Calendar, Users, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -10,6 +12,8 @@ export function Coupons() {
   const [soldCoupons, setSoldCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNewTemplateModal, setShowNewTemplateModal] = useState(false);
+  const [showSellCouponModal, setShowSellCouponModal] = useState(false);
 
   React.useEffect(() => {
     fetchData();
@@ -69,11 +73,17 @@ export function Coupons() {
           </div>
           
           <div className="flex space-x-3">
-            <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700">
+            <button 
+              onClick={() => setShowNewTemplateModal(true)}
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Template
             </button>
-            <button className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100">
+            <button 
+              onClick={() => setShowSellCouponModal(true)}
+              className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100"
+            >
               <Ticket className="h-4 w-4 mr-2" />
               Sell Coupon
             </button>
@@ -241,6 +251,25 @@ export function Coupons() {
             )}
           </>
         )}
+
+        {/* Modals */}
+        <NewCouponTemplateModal
+          isOpen={showNewTemplateModal}
+          onClose={() => setShowNewTemplateModal(false)}
+          onSuccess={() => {
+            fetchData();
+            setShowNewTemplateModal(false);
+          }}
+        />
+
+        <SellCouponModal
+          isOpen={showSellCouponModal}
+          onClose={() => setShowSellCouponModal(false)}
+          onSuccess={() => {
+            fetchData();
+            setShowSellCouponModal(false);
+          }}
+        />
       </div>
     </Layout>
   );
