@@ -20,13 +20,13 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const [cameraError, setCameraError] = useState('');
   const { activeShift } = useShift();
   const { profile } = useAuth();
-  const [cameraTimeout, setCameraTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Camera states
   const [showCamera, setShowCamera] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraTimeout, setCameraTimeout] = useState<NodeJS.Timeout | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -104,11 +104,6 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setCameraError('');
       setCameraReady(false);
       
-      // Clear any existing timeout
-      if (cameraTimeout) {
-        clearTimeout(cameraTimeout);
-      }
-      
       // Stop any existing stream first
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -121,14 +116,6 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
 
       console.log('Requesting camera access...');
       
-      // Set a timeout for camera initialization
-      const timeoutId = setTimeout(() => {
-        setCameraError('Camera is taking too long to load. Please try again or check your camera permissions.');
-        setCameraReady(false);
-      }, 10000); // 10 second timeout
-      
-      setCameraTimeout(timeoutId);
-      
       // Request camera with multiple fallback options
       let mediaStream;
       try {
@@ -137,8 +124,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
           video: {
             width: { ideal: 640, max: 1280 },
             height: { ideal: 480, max: 720 },
-            facingMode: 'user',
-            frameRate: { ideal: 30, max: 30 }
+            facingMode: 'user'
           },
           audio: false
         });
@@ -146,89 +132,53 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
         console.log('Ideal constraints failed, trying basic constraints:', err);
         // Fallback to basic constraints
         mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'user'
-          },
+          video: true,
           audio: false
         });
       }
 
       console.log('Camera access granted, setting up video element...');
-      
-      // Clear the timeout since we got the stream
-      clearTimeout(timeoutId);
-      setCameraTimeout(null);
-      
       setStream(mediaStream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         
-        // Add error handler for video element
-        videoRef.current.onerror = (e) => {
-          console.error('Video element error:', e);
-          setCameraError('Video playback error. Please try again.');
+        // Set up timeout for video loading
+        const timeoutId = setTimeout(() => {
+          setCameraError('Camera is taking too long to load. You can skip the photo and continue with registration.');
           setCameraReady(false);
-        };
+        }, 8000);
+        
+        setCameraTimeout(timeoutId);
         
         // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
           console.log('Video metadata loaded');
-          // Add a small delay to ensure video is actually ready
-          setTimeout(() => {
-            setCameraReady(true);
-          }, 500);
+          if (cameraTimeout) {
+            clearTimeout(cameraTimeout);
+            setCameraTimeout(null);
+          }
+          setCameraReady(true);
         };
         
         videoRef.current.oncanplay = () => {
           console.log('Video can play');
-          setTimeout(() => {
-            setCameraReady(true);
-          }, 500);
+          if (cameraTimeout) {
+            clearTimeout(cameraTimeout);
+            setCameraTimeout(null);
+          }
+          setCameraReady(true);
         };
-        
-        // Force play the video
-        try {
-          await videoRef.current.play();
-        } catch (playError) {
-          console.warn('Video play failed:', playError);
-          // This is often not critical, video might still work
-        }
       }
       
       setShowCamera(true);
     } catch (err: any) {
       console.error('Camera access error:', err);
-      
-      // Clear timeout on error
-      if (cameraTimeout) {
-        clearTimeout(cameraTimeout);
-        setCameraTimeout(null);
-      }
-      
-      let errorMessage = 'Camera access failed. ';
-      
-      if (err.name === 'NotAllowedError') {
-        errorMessage += 'Please allow camera permissions and try again.';
-      } else if (err.name === 'NotFoundError') {
-        errorMessage += 'No camera found. Please connect a camera and try again.';
-      } else if (err.name === 'NotReadableError') {
-        errorMessage += 'Camera is being used by another application. Please close other apps and try again.';
-      } else {
-        errorMessage += err.message;
-      }
-      
-      setCameraError(`Camera access failed: ${err.message}. Please check permissions and try again.`);
+      setCameraError(`Camera access failed: ${err.message}. You can skip the photo and continue with registration.`);
     }
   };
 
   const stopCamera = () => {
-    // Clear any pending timeout
-    if (cameraTimeout) {
-      clearTimeout(cameraTimeout);
-      setCameraTimeout(null);
-    }
-    
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
@@ -419,7 +369,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
                             <p className="text-sm text-gray-600">Loading camera...</p>
-                            <p className="text-xs text-gray-500 mt-1">This may take a few seconds</p>
+                            <p className="text-xs text-gray-500 mt-1">This may take a moment...</p>
                           </div>
                         </div>
                       )}
@@ -430,7 +380,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                         type="button"
                         onClick={capturePhoto}
                         disabled={!cameraReady}
-                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
                       >
                         <Check className="h-4 w-4 mr-1" />
                         Capture
@@ -438,8 +388,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                       <button
                         type="button"
                         onClick={() => { stopCamera(); startCamera(); }}
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
-                        disabled={!cameraReady && !cameraError}
+                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
                       >
                         <RotateCcw className="h-4 w-4 mr-1" />
                         Retry
@@ -469,6 +418,12 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                     <Camera className="h-4 w-4 mr-2" />
                     Take Photo
                   </button>
+                )}
+                
+                {!capturedPhoto && (
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    Photo is optional - you can continue without taking a photo
+                  </p>
                 )}
               </div>
 
