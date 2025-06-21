@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Car as IdCard, Banknote, Smartphone, QrCode } from 'lucide-react';
+import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Car as IdCard, Banknote, Smartphone } from 'lucide-react';
 // Using a more standard icon for ID Card
 import { VscVscode as IdCard } from 'react-icons/vsc';
 
@@ -446,6 +446,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                                 <p className="font-semibold text-lg text-gray-800">RM{plan.price.toFixed(2)}</p>
                             </label>
                         ))}
+                    </div>
                   <div className="grid grid-cols-3 gap-3">
                     <button
                       type="button"
@@ -462,15 +463,15 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                     
                     <button
                       type="button"
-                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'QR' }))}
+                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'CARD' }))}
                       className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                        purchaseData.payment_method === 'QR'
+                        purchaseData.payment_method === 'CARD'
                           ? 'border-orange-500 bg-orange-50 text-orange-700'
                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
                       }`}
                     >
-                      <QrCode className="h-6 w-6 mb-2" />
-                      <span className="text-sm font-medium">QR</span>
+                      <CreditCard className="h-6 w-6 mb-2" />
+                      <span className="text-sm font-medium">Card</span>
                     </button>
                     
                     <button
@@ -483,7 +484,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                       }`}
                     >
                       <Smartphone className="h-6 w-6 mb-2" />
-                      <span className="text-sm font-medium">Bank Transfer</span>
+                      <span className="text-sm font-medium">Transfer</span>
                     </button>
                   </div>
                 </div>
@@ -514,6 +515,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                             </div>
                         </div>
                     </div>
+                )}
                       {expiryDate && (
                         <div className="flex justify-between text-xs text-green-600 font-medium pt-1 border-t border-gray-200">
                           <span>Membership expires:</span>
@@ -524,7 +526,6 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                           })}</span>
                         </div>
                       )}
-                )}
               
                 <div className="flex justify-between items-center pt-4">
                   <Button type="button" variant="outline" onClick={() => setStep(1)}>Back</Button>
@@ -552,5 +553,5 @@ function Button({ children, variant = 'primary', loading = false, ...props }: Re
             {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
             {children}
         </button>
-    )
+    );
 }
