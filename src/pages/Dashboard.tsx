@@ -6,7 +6,6 @@ import { memberService } from '../services/memberService';
 import { checkinService } from '../services/checkinService'; 
 import { posService } from '../services/posService'; 
 import { Users, DollarSign, CreditCard, TrendingUp, Clock, UserCheck, ShoppingCart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 interface DashboardStats {
   activeMembers: number;
@@ -18,7 +17,6 @@ interface DashboardStats {
 }
 
 export function Dashboard() {
-  const navigate = useNavigate();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     activeMembers: 0,
