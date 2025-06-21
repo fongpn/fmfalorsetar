@@ -15,6 +15,7 @@ interface PlanFormData {
 
 export function MembershipPlans() {
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -38,7 +39,9 @@ export function MembershipPlans() {
     try {
       setLoading(true);
       setError(null);
-      const data = await memberService.getMembershipPlans();
+      const data = showInactive 
+        ? await memberService.getAllMembershipPlans()
+        : await memberService.getMembershipPlans();
       setPlans(data);
     } catch (err: any) {
       setError(err.message);
@@ -46,6 +49,10 @@ export function MembershipPlans() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPlans();
+  }, [showInactive]);
 
   const resetForm = () => {
     setFormData({
@@ -79,15 +86,17 @@ export function MembershipPlans() {
   };
 
   const handleDeletePlan = async (plan: MembershipPlan) => {
-    if (!confirm(`Are you sure you want to delete the "${plan.name}" plan? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to deactivate the "${plan.name}" plan? This will hide it from new member registrations but preserve existing data.`)) {
       return;
     }
 
     try {
       await memberService.deleteMembershipPlan(plan.id);
+      // Show success message
+      setError(''); // Clear any previous errors
       await fetchPlans();
     } catch (err: any) {
-      setError(`Failed to delete plan: ${err.message}`);
+      setError(`Failed to deactivate plan: ${err.message}`);
     }
   };
 
@@ -135,7 +144,18 @@ export function MembershipPlans() {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Available Plans</h2>
-            <p className="text-sm text-gray-600">Configure membership plans and pricing</p>
+            <div className="flex items-center space-x-4 mt-1">
+              <p className="text-sm text-gray-600">Configure membership plans and pricing</p>
+              <label className="flex items-center text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={showInactive}
+                  onChange={(e) => setShowInactive(e.target.checked)}
+                  className="rounded border-gray-300 text-orange-600 focus:ring-orange-500 mr-2"
+                />
+                Show inactive plans
+              </label>
+            </div>
           </div>
           <button 
             onClick={handleNewPlan}

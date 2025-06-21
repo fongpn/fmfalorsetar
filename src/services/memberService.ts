@@ -318,6 +318,17 @@ class MemberService {
     const { data, error } = await supabase
       .from('membership_plans')
       .select('*')
+      .eq('is_active', true)
+      .order('price');
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getAllMembershipPlans(): Promise<MembershipPlan[]> {
+    const { data, error } = await supabase
+      .from('membership_plans')
+      .select('*')
       .order('price');
 
     if (error) throw error;
