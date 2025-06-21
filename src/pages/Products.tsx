@@ -344,7 +344,7 @@ export function Products() {
                 pageSizeOptions={[25, 50, 100]}
               />
               </>
-
+            )}
           </>
         )}
 
