@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
-import { Search, Plus, Filter, Grid, List } from 'lucide-react';
+import { Search, Plus, Filter, Grid, List, User } from 'lucide-react';
 import { useMembers } from '../hooks/useMembers';
 import { MemberCard } from '../components/Members/MemberCard';
 import { NewMemberModal } from '../components/Members/NewMemberModal';
