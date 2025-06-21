@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { supabase } from '../lib/supabase';
+import { memberService } from '../services/memberService';
+import { checkinService } from '../services/checkinService';
+import { posService } from '../services/posService';
 import { Users, DollarSign, CreditCard, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
 
 interface DashboardStats {
@@ -29,18 +32,57 @@ export function Dashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      // This would typically involve multiple queries to get actual data
-      // For now, using sample data to demonstrate the UI
+      // Fetch all members and calculate active/expiring counts
+      const allMembers = await memberService.getAllMembers();
+      const activeMembers = allMembers.filter(member => member.status === 'ACTIVE').length;
+      
+      // Count members expiring in next 7 days
+      const expiringMembers = allMembers.filter(member => 
+        member.status === 'ACTIVE' && 
+        member.days_until_expiry !== undefined && 
+        member.days_until_expiry <= 7 && 
+        member.days_until_expiry >= 0
+      ).length;
+
+      // Get today's revenue
+      const todayRevenue = await posService.getTodayRevenue();
+
+      // Count active shifts
+      const { data: activeShiftsData, error: shiftsError } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('status', 'ACTIVE');
+      
+      if (shiftsError) throw shiftsError;
+      const activeShifts = activeShiftsData?.length || 0;
+
+      // Get today's check-ins
+      const checkInStats = await checkinService.getCheckInStats();
+      const todayCheckIns = checkInStats.total;
+
+      // Get low stock products count
+      const lowStockProducts = await posService.getLowStockProducts(10);
+      const lowStockCount = lowStockProducts.length;
+
       setStats({
-        activeMembers: 234,
-        todayRevenue: 1250.50,
-        activeShifts: 1,
-        todayCheckIns: 45,
-        expiringMemberships: 12,
-        lowStockProducts: 3,
+        activeMembers,
+        todayRevenue,
+        activeShifts,
+        todayCheckIns,
+        expiringMemberships: expiringMembers,
+        lowStockProducts: lowStockCount,
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+      // Keep default values on error
+      setStats({
+        activeMembers: 0,
+        todayRevenue: 0,
+        activeShifts: 0,
+        todayCheckIns: 0,
+        expiringMemberships: 0,
+        lowStockProducts: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -193,7 +235,6 @@ export function Dashboard() {
             ))}
           </div>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-        </div>
       </div>
     </Layout>
   );

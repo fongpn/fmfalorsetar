@@ -318,6 +318,22 @@ class POSService {
       sales_by_day: [] // Could be implemented for detailed daily breakdown
     };
   }
+
+  async getTodayRevenue(): Promise<number> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('amount')
+      .in('type', ['POS_SALE', 'WALK_IN', 'MEMBERSHIP', 'REGISTRATION_FEE', 'COUPON_SALE'])
+      .eq('status', 'PAID')
+      .gte('created_at', today)
+      .lt('created_at', `${today}T23:59:59.999Z`);
+
+    if (error) throw error;
+
+    return (data || []).reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
+  }
 }
 
 export const posService = new POSService();
