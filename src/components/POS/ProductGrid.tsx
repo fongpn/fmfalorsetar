@@ -93,22 +93,32 @@ export function ProductGrid({ products, onAddToCart, loading }: ProductGridProps
           <div className="space-y-2">
             <h3 className="font-medium text-gray-900 line-clamp-2">{product.name}</h3>
             
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-gray-900">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xl font-bold text-gray-900">
                 RM{product.price.toFixed(2)}
               </span>
-              <div className="flex items-center space-x-1">
-                {product.current_stock <= 5 && product.current_stock > 0 && (
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                )}
-                <span className={`text-sm ${
-                  product.current_stock <= 5 
-                    ? product.current_stock === 0 
-                      ? 'text-red-600' 
-                      : 'text-amber-600'
-                    : 'text-gray-500'
-                }`}>
-                  {product.current_stock} in stock
+            </div>
+            
+            {/* Enhanced Stock Display */}
+            <div className="mb-4">
+              <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
+                product.current_stock === 0 
+                  ? 'bg-red-100 text-red-800 border border-red-200' 
+                  : product.current_stock <= 5
+                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                    : product.current_stock <= 20
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : 'bg-green-100 text-green-800 border border-green-200'
+              }`}>
+                {product.current_stock === 0 && <AlertTriangle className="h-4 w-4 mr-1.5" />}
+                {product.current_stock <= 5 && product.current_stock > 0 && <AlertTriangle className="h-4 w-4 mr-1.5" />}
+                <span className="font-semibold">{product.current_stock}</span>
+                <span className="ml-1">
+                  {product.current_stock === 0 ? 'Out of Stock' :
+                   product.current_stock === 1 ? 'unit left' :
+                   product.current_stock <= 5 ? 'units left' :
+                   product.current_stock <= 20 ? 'in stock' :
+                   'in stock'}
                 </span>
               </div>
             </div>
@@ -116,7 +126,7 @@ export function ProductGrid({ products, onAddToCart, loading }: ProductGridProps
             <button
               onClick={() => onAddToCart(product)}
               disabled={product.current_stock === 0}
-              className="w-full px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-md"
             >
               {product.current_stock === 0 ? 'Out of Stock' : 'Add to Cart'}
             </button>

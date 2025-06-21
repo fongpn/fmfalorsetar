@@ -222,12 +222,23 @@ export function Products() {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
-                                {product.current_stock}
+                              <div className="flex items-center">
+                                <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                  product.current_stock === 0 
+                                    ? 'bg-red-100 text-red-800' 
+                                    : product.current_stock <= 5
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : product.current_stock <= 20
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : 'bg-green-100 text-green-800'
+                                }`}>
+                                  <span className="font-semibold">{product.current_stock}</span>
+                                  <span className="ml-1">units</span>
+                                </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${stockStatus.color}`}>
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${stockStatus.color}`}>
                                 <stockStatus.icon className="h-3 w-3 mr-1" />
                                 {stockStatus.label}
                               </span>

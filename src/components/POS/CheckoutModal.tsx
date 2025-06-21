@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CreditCard, DollarSign, Smartphone } from 'lucide-react';
+import { X, CreditCard, DollarSign, Smartphone, Banknote, QrCode } from 'lucide-react';
 import { CartItem, posService } from '../../services/posService';
 import { useShift } from '../../hooks/useShift';
 import { useAuth } from '../../contexts/AuthContext';
@@ -125,10 +125,54 @@ export function CheckoutModal({ isOpen, onClose, onSuccess, items, total }: Chec
           </div>
 
           {/* Payment Method */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700 mb-4">
               Payment Method *
             </label>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('CASH')}
+                className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                  paymentMethod === 'CASH'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                }`}
+              >
+                <Banknote className="h-6 w-6 mb-2" />
+                <span className="text-sm font-medium">Cash</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('QR')}
+                className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                  paymentMethod === 'QR'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                }`}
+              >
+                <QrCode className="h-6 w-6 mb-2" />
+                <span className="text-sm font-medium">QR Code</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('BANK_TRANSFER')}
+                className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                  paymentMethod === 'BANK_TRANSFER'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                }`}
+              >
+                <Smartphone className="h-6 w-6 mb-2" />
+                <span className="text-sm font-medium">Bank Transfer</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Legacy payment method selector (hidden but maintains functionality) */}
+          <div className="hidden">
             <div className="grid grid-cols-1 gap-2">
               {paymentMethods.map((method) => (
                 <label

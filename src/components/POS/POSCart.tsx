@@ -26,10 +26,12 @@ export function POSCart({ items, onUpdateQuantity, onRemoveItem, onClearCart, to
   return (
     <div className="bg-white rounded-lg border border-gray-200">
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Cart ({items.length} items)</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Cart ({items.length} item{items.length !== 1 ? 's' : ''})
+        </h3>
         <button
           onClick={onClearCart}
-          className="text-sm text-red-600 hover:text-red-700"
+          className="text-sm text-red-600 hover:text-red-700 font-medium"
         >
           Clear All
         </button>
@@ -68,8 +70,8 @@ export function POSCart({ items, onUpdateQuantity, onRemoveItem, onClearCart, to
               </div>
               
               <div className="text-right">
-                <p className="text-sm text-gray-500">RM{item.product.price} each</p>
-                <p className="font-semibold text-gray-900">RM{item.subtotal.toFixed(2)}</p>
+                <p className="text-xs text-gray-500">RM{item.product.price.toFixed(2)} each</p>
+                <p className="font-bold text-gray-900 text-lg">RM{item.subtotal.toFixed(2)}</p>
               </div>
             </div>
             
@@ -83,9 +85,9 @@ export function POSCart({ items, onUpdateQuantity, onRemoveItem, onClearCart, to
       </div>
 
       <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex items-center justify-between text-lg font-semibold">
+        <div className="flex items-center justify-between text-xl font-bold">
           <span>Total:</span>
-          <span>RM{total.toFixed(2)}</span>
+          <span className="text-orange-600">RM{total.toFixed(2)}</span>
         </div>
       </div>
     </div>
