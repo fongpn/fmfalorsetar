@@ -19,12 +19,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Centralized function to handle authentication state changes
+  const handleAuthChange = async (newSession: Session | null) => {
+    try {
+      setUser(newSession?.user ?? null);
+      setSession(newSession);
+      
+      if (newSession?.user) {
+        // Fetch the profile for the authenticated user
+        await fetchProfile(newSession.user.id);
+      } else {
+        // Clear profile when no user is authenticated
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error('Error handling auth change:', error);
+      // On error, clear all auth state
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
-    // Clear any invalid tokens on startup
-    const clearInvalidTokens = async () => {
+    // Initialize authentication state
+    const initializeAuth = async () => {
       try {
+        setLoading(true);
+        
+        // Get current session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -33,17 +60,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (mounted) {
             setUser(null);
             setSession(null);
+            setProfile(null);
           }
         } else if (mounted) {
-          setUser(session?.user ?? null);
-          setSession(session);
+          await handleAuthChange(session);
         }
       } catch (error) {
-        console.error('Error getting session:', error);
-        // Clear auth state on any error
+        console.error('Error initializing auth:', error);
         if (mounted) {
           setUser(null);
           setSession(null);
+          setProfile(null);
         }
       } finally {
         if (mounted) {
@@ -52,40 +79,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    clearInvalidTokens();
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-      setUser(session?.user ?? null);
-    });
+    initializeAuth();
+
+    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('Token refreshed successfully');
-      } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out');
-      }
+      console.log('Auth state change:', event);
       
-      // Handle token refresh errors
-      if (event === 'TOKEN_REFRESHED' && !session) {
-        console.warn('Token refresh failed, signing out');
-        await supabase.auth.signOut();
-        setUser(null);
-        setSession(null);
-      } else {
-        setUser(session?.user ?? null);
-        setSession(session);
+      // Handle different auth events
+      switch (event) {
+        case 'SIGNED_IN':
+          console.log('User signed in');
+          await handleAuthChange(session);
+          break;
+        case 'SIGNED_OUT':
+          console.log('User signed out');
+          await handleAuthChange(null);
+          break;
+        case 'TOKEN_REFRESHED':
+          console.log('Token refreshed successfully');
+          if (session) {
+            await handleAuthChange(session);
+          } else {
+            console.warn('Token refresh failed, signing out');
+            await supabase.auth.signOut();
+            await handleAuthChange(null);
+          }
+          break;
+        case 'USER_UPDATED':
+          console.log('User updated');
+          if (session) {
+            await handleAuthChange(session);
+          }
+          break;
+        default:
+          await handleAuthChange(session);
       }
-      
-      setLoading(false);
     });
 
     return () => {
@@ -96,44 +128,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profile:', error);
+        throw error;
+      }
+      
+      console.log('Profile fetched successfully:', data?.full_name);
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
-    } finally {
-      setLoading(false);
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true);
+      setProfile(null); // Clear any existing profile data
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
       if (error) throw error;
+      
+      // The auth state change listener will handle setting user and profile
     } catch (error) {
       console.error('Sign in error:', error);
-      return { error };
+      setLoading(false);
+      throw error;
     }
   };
 
   const signOut = async () => {
     try {
+      setLoading(true);
+      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // The auth state change listener will handle clearing state
     } catch (error) {
       console.error('Sign out error:', error);
       // Force clear local state even if signOut fails
       setUser(null);
       setSession(null);
+      setProfile(null);
+      setLoading(false);
     }
   };
 
