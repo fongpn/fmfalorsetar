@@ -48,11 +48,35 @@ class MemberService {
   }
 
   async generateMemberId(): Promise<string> {
-    // Get the highest existing member ID number
+    // Get the highest existing member ID number (4-digit format)
     const { data, error } = await supabase
       .from('members')
       .select('member_id_string')
-      .like('member_id_string', 'FMF-%')
+      .order('member_id_string', { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+
+    let nextNumber = 1;
+    if (data && data.length > 0) {
+      // Parse the member ID as integer and increment
+      const lastId = data[0].member_id_string;
+      const lastNumber = parseInt(lastId);
+      if (!isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
+    }
+
+    // Return 4-digit padded number
+    return nextNumber.toString().padStart(4, '0');
+  }
+
+  async generateMemberIdOld(): Promise<string> {
+    // Legacy FMF-XXX format (keeping for reference)
+    const { data, error } = await supabase
+      .from('members')
+      .select('member_id_string')
+      .like('member_id_string', '%-%')
       .order('member_id_string', { ascending: false })
       .limit(1);
 

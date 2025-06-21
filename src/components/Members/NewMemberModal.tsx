@@ -112,11 +112,13 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       const video = videoRef.current;
       const context = canvas.getContext('2d');
       
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // Set canvas dimensions to match video display size
+      canvas.width = 640;
+      canvas.height = 480;
       
       if (context) {
-        context.drawImage(video, 0, 0);
+        // Draw the video frame to canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedPhoto(photoDataUrl);
         setMemberData(prev => ({ ...prev, photo_url: photoDataUrl }));
@@ -243,14 +245,14 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                     <img 
                       src={capturedPhoto} 
                       alt="Member photo"
-                      className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-orange-200"
+                      className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-orange-200"
                     />
                     <button
                       type="button"
                       onClick={retakePhoto}
-                      className="absolute -bottom-1 -right-1 p-1 bg-orange-600 text-white rounded-full hover:bg-orange-700 transform translate-x-8"
+                      className="absolute bottom-0 right-0 p-2 bg-orange-600 text-white rounded-full hover:bg-orange-700 shadow-lg"
                     >
-                      <RotateCcw className="h-3 w-3" />
+                      <RotateCcw className="h-4 w-4" />
                     </button>
                   </div>
                 ) : showCamera ? (
@@ -259,29 +261,32 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                       ref={videoRef}
                       autoPlay
                       playsInline
-                      className="w-48 h-36 rounded-lg mx-auto bg-gray-200"
+                      muted
+                      className="w-64 h-48 rounded-lg mx-auto bg-gray-200 object-cover"
                     />
                     <canvas ref={canvasRef} className="hidden" />
-                    <div className="flex justify-center space-x-2 mt-2">
+                    <div className="flex justify-center space-x-3 mt-3">
                       <button
                         type="button"
                         onClick={capturePhoto}
-                        className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
                       >
-                        <Check className="h-4 w-4" />
+                        <Check className="h-4 w-4 mr-1" />
+                        Capture
                       </button>
                       <button
                         type="button"
                         onClick={stopCamera}
-                        className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
+                        className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4 mr-1" />
+                        Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <User className="h-10 w-10 text-gray-400" />
+                  <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <User className="h-16 w-16 text-gray-400" />
                   </div>
                 )}
                 
@@ -289,9 +294,9 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                   <button
                     type="button"
                     onClick={startCamera}
-                    className="flex items-center justify-center mx-auto px-3 py-1 text-sm text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100"
+                    className="flex items-center justify-center mx-auto px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 border border-orange-200"
                   >
-                    <Camera className="h-4 w-4 mr-1" />
+                    <Camera className="h-4 w-4 mr-2" />
                     Take Photo
                   </button>
                 )}
@@ -303,18 +308,17 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Member ID
+                Member ID (4-digit number)
               </label>
               <input
                 type="text"
                 value={memberData.member_id_string}
-                onChange={(e) => setMemberData(prev => ({ ...prev, member_id_string: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 bg-gray-50"
-                placeholder="Auto-generated"
+                placeholder="Auto-generated 4-digit number"
                 required
                 readOnly
               />
-              <p className="text-xs text-gray-500 mt-1">Auto-generated from database</p>
+              <p className="text-xs text-gray-500 mt-1">Auto-generated sequential 4-digit number</p>
             </div>
 
             <div>
