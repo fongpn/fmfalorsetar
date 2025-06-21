@@ -399,9 +399,18 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                                   alt={member.full_name}
                                   className="w-10 h-10 rounded-full object-cover border border-gray-200"
                                   onError={(e) => {
-                                    // Fallback to default avatar if image fails to load
-                                    e.currentTarget.style.display = 'none';
-                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                    // Replace the image with a default avatar when it fails to load
+                                    const target = e.currentTarget;
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `
+                                        <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center border border-gray-200">
+                                          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                          </svg>
+                                        </div>
+                                      `;
+                                    }
                                   }}
                                 />
                               ) : (
@@ -409,10 +418,6 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                                   <User className="h-5 w-5 text-gray-400" />
                                 </div>
                               )}
-                              {/* Fallback avatar (hidden by default, shown if image fails) */}
-                              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center border border-gray-200 hidden">
-                                <User className="h-5 w-5 text-gray-400" />
-                              </div>
                             </div>
                             <div>
                               <p className="font-medium text-gray-900">{member.full_name}</p>
