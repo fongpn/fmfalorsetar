@@ -5,6 +5,8 @@ import { Search, Plus, Filter, Grid, List, User } from 'lucide-react';
 import { useMembers } from '../hooks/useMembers';
 import { MemberCard } from '../components/Members/MemberCard';
 import { NewMemberModal } from '../components/Members/NewMemberModal';
+import { MemberProfileModal } from '../components/Members/MemberProfileModal';
+import { MemberWithStatus } from '../services/memberService';
 
 
 export function Members() {
@@ -12,11 +14,23 @@ export function Members() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showNewMemberModal, setShowNewMemberModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<MemberWithStatus | null>(null);
   const { members, loading, error, searchMembers, refreshMembers } = useMembers();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     searchMembers(query);
+  };
+
+  const handleMemberClick = (member: MemberWithStatus) => {
+    setSelectedMember(member);
+    setShowProfileModal(true);
+  };
+
+  const handleProfileModalClose = () => {
+    setShowProfileModal(false);
+    setSelectedMember(null);
   };
 
   const filteredMembers = members.filter(member => {
@@ -143,10 +157,7 @@ export function Members() {
                   <MemberCard 
                     key={member.id} 
                     member={member}
-                    onClick={() => {
-                      // TODO: Open member details modal
-                      console.log('Open member details:', member.id);
-                    }}
+                    onClick={() => handleMemberClick(member)}
                   />
                 ))}
               </div>
@@ -168,6 +179,16 @@ export function Members() {
           onSuccess={() => {
             refreshMembers();
             setShowNewMemberModal(false);
+          }}
+        />
+
+        {/* Member Profile Modal */}
+        <MemberProfileModal
+          isOpen={showProfileModal}
+          onClose={handleProfileModalClose}
+          member={selectedMember}
+          onSuccess={() => {
+            refreshMembers();
           }}
         />
       </div>
