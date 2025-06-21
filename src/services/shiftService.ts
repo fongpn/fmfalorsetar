@@ -284,7 +284,6 @@ class ShiftService {
         .from('profiles')
         .select('id, full_name, role')
         .order('full_name');
-}
 
       if (error) throw error;
       return data || [];
@@ -293,4 +292,5 @@ class ShiftService {
       return [];
     }
   }
+}
 export const shiftService = new ShiftService();
