@@ -94,6 +94,7 @@ export interface Product {
   name: string;
   price: number;
   current_stock: number;
+  photo_url?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

@@ -1,11 +1,56 @@
-import React from 'react';
-import { Package, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, AlertTriangle, User } from 'lucide-react';
 import { Product } from '../../lib/supabase';
 
 interface ProductGridProps {
   products: Product[];
   onAddToCart: (product: Product) => void;
   loading: boolean;
+}
+
+// Component for product image with error handling
+function ProductImage({ product, size = "h-32" }: { product: Product; size?: string }) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(false);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setImageError(false);
+  };
+
+  // Show default icon if no photo URL, image failed to load, or still loading
+  if (!product.photo_url || imageError || !imageLoaded) {
+    return (
+      <div className={`${size} bg-gray-100 rounded-lg flex items-center justify-center`}>
+        <Package className="h-12 w-12 text-gray-400" />
+        {/* Hidden image to handle loading/error states */}
+        {product.photo_url && !imageError && (
+          <img
+            src={product.photo_url}
+            alt=""
+            className="hidden"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Show actual image once it's loaded successfully
+  return (
+    <img
+      src={product.photo_url}
+      alt={product.name}
+      className={`${size} rounded-lg object-cover`}
+      onError={handleImageError}
+    />
+  );
 }
 
 export function ProductGrid({ products, onAddToCart, loading }: ProductGridProps) {
@@ -41,8 +86,8 @@ export function ProductGrid({ products, onAddToCart, loading }: ProductGridProps
           key={product.id}
           className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
         >
-          <div className="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-            <Package className="h-12 w-12 text-gray-400" />
+          <div className="mb-4">
+            <ProductImage product={product} size="w-full h-32" />
           </div>
           
           <div className="space-y-2">

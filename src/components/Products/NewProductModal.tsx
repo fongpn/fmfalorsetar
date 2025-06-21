@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Package, Save, AlertCircle, DollarSign } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Package, Save, AlertCircle, DollarSign, Camera, RotateCcw, Upload } from 'lucide-react';
 import { posService } from '../../services/posService';
 
 interface NewProductModalProps {
@@ -11,10 +11,18 @@ interface NewProductModalProps {
 export function NewProductModal({ isOpen, onClose, onSuccess }: NewProductModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cameraMode, setCameraMode] = useState<'none' | 'loading' | 'ready' | 'captured' | 'error'>('none');
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     name: '',
     price: 0,
     current_stock: 0,
+    photo_url: '',
     is_active: true
   });
 
@@ -50,13 +58,117 @@ export function NewProductModal({ isOpen, onClose, onSuccess }: NewProductModalP
     }
   };
 
+  const cleanupCamera = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraMode('none');
+  };
+
+  const initializeCamera = async () => {
+    if (cameraMode === 'loading' || cameraMode === 'ready') return;
+
+    cleanupCamera();
+    setCameraMode('loading');
+    setError('');
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Camera not supported in this browser.');
+      setCameraMode('error');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'environment' },
+        audio: false
+      });
+      
+      mediaStreamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.oncanplay = () => {
+          setCameraMode('ready');
+        };
+      }
+    } catch (err: any) {
+      console.error('Camera initialization failed:', err);
+      let message = `Camera failed: ${err.message}`;
+      if (err.name === 'NotAllowedError') {
+        message = 'Camera permission was denied. Please allow access in your browser settings.';
+      } else if (err.name === 'NotFoundError') {
+        message = 'No camera was found on this device.';
+      }
+      setError(message);
+      setCameraMode('error');
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current && cameraMode === 'ready') {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+
+      if (!context) {
+        setError('Could not get canvas context.');
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      setPhotoDataUrl(dataUrl);
+      setFormData(prev => ({ ...prev, photo_url: dataUrl }));
+      setCameraMode('captured');
+      
+      cleanupCamera();
+    }
+  };
+
+  const retakePhoto = () => {
+    setPhotoDataUrl(null);
+    setFormData(prev => ({ ...prev, photo_url: '' }));
+    initializeCamera();
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setError('Image file size must be less than 5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setPhotoDataUrl(dataUrl);
+        setFormData(prev => ({ ...prev, photo_url: dataUrl }));
+        setCameraMode('captured');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleClose = () => {
+    cleanupCamera();
     setFormData({
       name: '',
       price: 0,
       current_stock: 0,
+      photo_url: '',
       is_active: true
     });
+    setPhotoDataUrl(null);
+    setCameraMode('none');
     setError('');
     onClose();
   };
@@ -83,6 +195,100 @@ export function NewProductModal({ isOpen, onClose, onSuccess }: NewProductModalP
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
+
+          {/* Photo Section */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">Product Photo</label>
+            <div className="flex flex-col items-center gap-4">
+              {photoDataUrl ? (
+                <img 
+                  src={photoDataUrl} 
+                  alt="Product" 
+                  className="w-32 h-32 rounded-lg object-cover border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                  <Package className="h-12 w-12 text-gray-400" />
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                {cameraMode === 'none' && !photoDataUrl && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={initializeCamera}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 border border-orange-200"
+                    >
+                      <Camera className="h-4 w-4 mr-1" />
+                      Take Photo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-md hover:bg-gray-100 border border-gray-200"
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      Upload
+                    </button>
+                  </>
+                )}
+                {photoDataUrl && cameraMode !== 'ready' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={retakePhoto}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 border border-orange-200"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      Retake
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-md hover:bg-gray-100 border border-gray-200"
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      Replace
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Camera Interface */}
+            {cameraMode !== 'none' && cameraMode !== 'captured' && (
+              <div className="relative w-full aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                {cameraMode === 'loading' && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+                  </div>
+                )}
+                <canvas ref={canvasRef} className="hidden" />
+                {cameraMode === 'ready' && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                    <button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="bg-orange-600 hover:bg-orange-700 text-white rounded-full p-4 h-16 w-16 flex items-center justify-center shadow-lg"
+                    >
+                      <Camera className="h-8 w-8" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -151,7 +357,7 @@ export function NewProductModal({ isOpen, onClose, onSuccess }: NewProductModalP
               <Package className="h-4 w-4 text-blue-600 mt-0.5" />
               <div className="text-sm text-blue-700">
                 <p className="font-medium">Product Information</p>
-                <p>You can adjust stock levels later using the "Manage Stock" feature.</p>
+                <p>You can adjust stock levels later using the "Manage Stock" feature. Photos help with product identification.</p>
               </div>
             </div>
           </div>
