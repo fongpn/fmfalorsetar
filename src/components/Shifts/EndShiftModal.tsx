@@ -16,6 +16,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [endingCashBalance, setEndingCashBalance] = useState<number>(0);
+  const [handoverNotes, setHandoverNotes] = useState('');
   const [shiftStats, setShiftStats] = useState({
     totalTransactions: 0,
     totalRevenue: 0,
@@ -84,7 +85,8 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
         ending_cash_balance: endingCashBalance,
         ending_staff_id: profile.id,
         system_calculated_cash: activeShift.starting_cash_float + shiftStats.totalRevenue,
-        cash_discrepancy: endingCashBalance - (activeShift.starting_cash_float + shiftStats.totalRevenue)
+        cash_discrepancy: endingCashBalance - (activeShift.starting_cash_float + shiftStats.totalRevenue),
+        handover_notes: handoverNotes.trim() || undefined
       };
 
       // Update shift directly without complex query
@@ -122,6 +124,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
 
   const handleClose = () => {
     setEndingCashBalance(0);
+    setHandoverNotes('');
     setError('');
     setSuccess('');
     onClose();
@@ -242,6 +245,23 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
             </div>
             <p className="text-xs text-gray-500 mt-1">
               Count all cash in the register and enter the total amount
+            </p>
+          </div>
+
+          {/* Handover Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Handover Notes (Optional)
+            </label>
+            <textarea
+              value={handoverNotes}
+              onChange={(e) => setHandoverNotes(e.target.value)}
+              placeholder="Leave notes for the next shift staff..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Include any important information for the next shift (issues, reminders, etc.)
             </p>
           </div>
 

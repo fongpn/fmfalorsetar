@@ -229,6 +229,9 @@ export function Shifts() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Cash Reconciliation
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Handover
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -276,6 +279,24 @@ export function Shifts() {
                                   </div>
                                 )}
                               </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="max-w-xs">
+                              {shift.handover_notes ? (
+                                <div className="text-sm text-gray-900">
+                                  <div className="truncate" title={shift.handover_notes}>
+                                    {shift.handover_notes}
+                                  </div>
+                                  {shift.next_shift && (
+                                    <div className="text-xs text-green-600 mt-1">
+                                      → Linked to next shift
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400">No notes</span>
+                              )}
                             </div>
                           </td>
                         </tr>

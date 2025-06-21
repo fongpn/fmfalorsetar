@@ -11,7 +11,7 @@ export interface EndShiftData {
   ending_staff_id: string;
   system_calculated_cash?: number;
   cash_discrepancy?: number;
-  notes?: string;
+  handover_notes?: string;
 }
 
 export interface ShiftResult {
@@ -51,6 +51,27 @@ class ShiftService {
         .single();
 
       if (error) throw error;
+
+      // Link the previous shift to this new shift
+      try {
+        const { data: previousShift, error: prevError } = await supabase
+          .from('shifts')
+          .select('id')
+          .eq('status', 'CLOSED')
+          .order('end_time', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!prevError && previousShift) {
+          await supabase
+            .from('shifts')
+            .update({ next_shift_id: shift.id })
+            .eq('id', previousShift.id);
+        }
+      } catch (linkError) {
+        // Don't fail the shift creation if linking fails
+        console.warn('Failed to link previous shift:', linkError);
+      }
 
       return {
         success: true,
@@ -103,6 +124,7 @@ class ShiftService {
           ending_cash_balance: endData.ending_cash_balance,
           system_calculated_cash: systemCalculatedCash,
           cash_discrepancy: cashDiscrepancy,
+          handover_notes: endData.handover_notes,
           status: 'CLOSED'
         })
         .eq('id', shiftId)
@@ -134,7 +156,8 @@ class ShiftService {
         .from('shifts')
         .select(`
           *,
-          starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name)
+          starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name),
+          ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)
         `)
         .eq('status', 'ACTIVE')
         .maybeSingle();
@@ -154,7 +177,8 @@ class ShiftService {
         .select(`
           *,
           starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name),
-          ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)
+          ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name),
+          next_shift:shifts!shifts_next_shift_id_fkey(id, start_time)
         `)
         .eq('status', 'CLOSED')
         .order('start_time', { ascending: false })
@@ -209,6 +233,45 @@ class ShiftService {
         checkIns: 0,
         salesCount: 0
       };
+    }
+  }
+
+  async getShiftHandoverInfo(shiftId: string): Promise<{
+    handoverNotes?: string;
+    previousShift?: any;
+    nextShift?: any;
+  }> {
+    try {
+      const { data: shift, error } = await supabase
+        .from('shifts')
+        .select(`
+          handover_notes,
+          previous_shift:shifts!shifts_next_shift_id_fkey(
+            id,
+            start_time,
+            end_time,
+            handover_notes,
+            ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)
+          ),
+          next_shift:shifts!shifts_next_shift_id_fkey(
+            id,
+            start_time,
+            starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name)
+          )
+        `)
+        .eq('id', shiftId)
+        .single();
+
+      if (error) throw error;
+
+      return {
+        handoverNotes: shift.handover_notes,
+        previousShift: shift.previous_shift,
+        nextShift: shift.next_shift
+      };
+    } catch (error) {
+      console.error('Error fetching shift handover info:', error);
+      return {};
     }
   }
 }

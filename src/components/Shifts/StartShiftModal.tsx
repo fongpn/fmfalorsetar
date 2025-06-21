@@ -14,7 +14,35 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [cashFloat, setCashFloat] = useState<number>(100);
+  const [previousShiftNotes, setPreviousShiftNotes] = useState<string>('');
   const { profile } = useAuth();
+
+  useEffect(() => {
+    if (isOpen) {
+      loadPreviousShiftNotes();
+    }
+  }, [isOpen]);
+
+  const loadPreviousShiftNotes = async () => {
+    try {
+      const { data: lastShift, error } = await supabase
+        .from('shifts')
+        .select('handover_notes, ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)')
+        .eq('status', 'CLOSED')
+        .order('end_time', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && lastShift?.handover_notes) {
+        setPreviousShiftNotes(lastShift.handover_notes);
+      } else {
+        setPreviousShiftNotes('');
+      }
+    } catch (err) {
+      console.warn('Could not load previous shift notes:', err);
+      setPreviousShiftNotes('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +87,7 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
 
   const handleClose = () => {
     setCashFloat(100);
+    setPreviousShiftNotes('');
     setError('');
     setSuccess('');
     onClose();
@@ -92,6 +121,19 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
             <div className="p-3 bg-green-50 border border-green-200 rounded-md flex items-center space-x-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <p className="text-sm text-green-600">{success}</p>
+            </div>
+          )}
+
+          {/* Previous Shift Handover Notes */}
+          {previousShiftNotes && (
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+              <div className="flex items-center space-x-2 mb-2">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <h3 className="text-sm font-medium text-blue-900">Notes from Previous Shift</h3>
+              </div>
+              <div className="text-sm text-blue-700 bg-white p-3 rounded border">
+                {previousShiftNotes}
+              </div>
             </div>
           )}
 
