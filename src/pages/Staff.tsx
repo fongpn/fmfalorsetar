@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { NewStaffModal } from '../components/Staff/NewStaffModal.tsx';
+import { StaffProfileModal } from '../components/Staff/StaffProfileModal';
 import { Plus, Search, User, Shield, Mail, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -10,6 +11,8 @@ export function Staff() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNewStaffModal, setShowNewStaffModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
 
   React.useEffect(() => {
     fetchStaff();
@@ -55,6 +58,16 @@ export function Staff() {
           label: role
         };
     }
+  };
+
+  const handleStaffClick = (staffMember: any) => {
+    setSelectedStaff(staffMember);
+    setShowProfileModal(true);
+  };
+
+  const handleProfileModalClose = () => {
+    setShowProfileModal(false);
+    setSelectedStaff(null);
   };
 
   const filteredStaff = staff.filter(member =>
@@ -125,7 +138,11 @@ export function Staff() {
             {filteredStaff.map((staffMember) => {
               const roleConfig = getRoleConfig(staffMember.role);
               return (
-                <div key={staffMember.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                <div 
+                  key={staffMember.id} 
+                  className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleStaffClick(staffMember)}
+                >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center">
                       <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
@@ -199,6 +216,16 @@ export function Staff() {
           onSuccess={() => {
             fetchStaff();
             setShowNewStaffModal(false);
+          }}
+        />
+
+        {/* Staff Profile Modal */}
+        <StaffProfileModal
+          isOpen={showProfileModal}
+          onClose={handleProfileModalClose}
+          staff={selectedStaff}
+          onSuccess={() => {
+            fetchStaff();
           }}
         />
       </div>
