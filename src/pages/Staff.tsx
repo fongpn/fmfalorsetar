@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
+import { NewStaffModal } from '../components/Staff/NewStaffModal';
 import { Plus, Search, User, Shield, Mail, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -8,6 +9,7 @@ export function Staff() {
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNewStaffModal, setShowNewStaffModal] = useState(false);
 
   React.useEffect(() => {
     fetchStaff();
@@ -88,7 +90,10 @@ export function Staff() {
             </div>
           </div>
           
-          <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700">
+          <button 
+            onClick={() => setShowNewStaffModal(true)}
+            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Staff Member
           </button>
@@ -186,6 +191,16 @@ export function Staff() {
             </div>
           </div>
         </div>
+
+        {/* New Staff Modal */}
+        <NewStaffModal
+          isOpen={showNewStaffModal}
+          onClose={() => setShowNewStaffModal(false)}
+          onSuccess={() => {
+            fetchStaff();
+            setShowNewStaffModal(false);
+          }}
+        />
       </div>
     </Layout>
   );
