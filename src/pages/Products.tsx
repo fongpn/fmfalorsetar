@@ -213,7 +213,7 @@ export function Products() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">
-                                ${product.price.toFixed(2)}
+                                RM{product.price.toFixed(2)}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">

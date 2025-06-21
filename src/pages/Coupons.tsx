@@ -114,7 +114,7 @@ export function Coupons() {
                     </div>
                     <div className="ml-3">
                       <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
-                      <p className="text-2xl font-bold text-purple-600">${template.price}</p>
+                      <p className="text-2xl font-bold text-purple-600">RM{template.price}</p>
                     </div>
                   </div>
                 </div>

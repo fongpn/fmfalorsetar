@@ -172,7 +172,7 @@ export function Settings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Walk-in Rate ($)
+                  Walk-in Rate (RM)
                 </label>
                 <input
                   type="number"
@@ -185,7 +185,7 @@ export function Settings() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Registration Fee ($)
+                  Registration Fee (RM)
                 </label>
                 <input
                   type="number"
@@ -210,7 +210,7 @@ export function Settings() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Late Fee Amount ($)
+                  Late Fee Amount (RM)
                 </label>
                 <input
                   type="number"

@@ -290,9 +290,9 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-gray-900">${plan.price}</p>
+                        <p className="font-semibold text-gray-900">RM{plan.price}</p>
                         {plan.has_registration_fee && (
-                          <p className="text-xs text-gray-500">+ $25 reg fee</p>
+                          <p className="text-xs text-gray-500">+ RM25 reg fee</p>
                         )}
                       </div>
                     </div>
@@ -323,17 +323,17 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>{selectedPlan.name}</span>
-                    <span>${selectedPlan.price}</span>
+                    <span>RM{selectedPlan.price}</span>
                   </div>
                   {registrationFee > 0 && (
                     <div className="flex justify-between">
                       <span>Registration Fee</span>
-                      <span>${registrationFee}</span>
+                      <span>RM{registrationFee}</span>
                     </div>
                   )}
                   <div className="border-t pt-1 flex justify-between font-medium">
                     <span>Total</span>
-                    <span>${totalAmount}</span>
+                    <span>RM{totalAmount}</span>
                   </div>
                 </div>
               </div>
@@ -352,7 +352,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                 disabled={loading || !purchaseData.plan_id}
                 className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
               >
-                {loading ? 'Processing...' : `Complete Registration ($${totalAmount})`}
+                {loading ? 'Processing...' : `Complete Registration (RM${totalAmount})`}
               </button>
             </div>
           </form>

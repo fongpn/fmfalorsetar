@@ -98,7 +98,7 @@ export function Dashboard() {
     },
     {
       title: "Today's Revenue",
-      value: `$${stats.todayRevenue.toFixed(2)}`,
+      value: `RM${stats.todayRevenue.toFixed(2)}`,
       icon: DollarSign,
       color: 'bg-green-500',
       change: '+8.2% from yesterday',

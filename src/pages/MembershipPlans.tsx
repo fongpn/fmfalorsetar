@@ -75,7 +75,7 @@ export function MembershipPlans() {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
-                    <p className="text-2xl font-bold text-orange-600">${plan.price}</p>
+                    <p className="text-2xl font-bold text-orange-600">RM{plan.price}</p>
                   </div>
                 </div>
                 <div className="flex space-x-2">

@@ -45,7 +45,7 @@ export function CheckInStats({ stats, loading }: CheckInStatsProps) {
       color: 'bg-orange-500',
       textColor: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      subtitle: `$${stats.revenue.toFixed(2)} revenue`
+      subtitle: `RM${stats.revenue.toFixed(2)} revenue`
     },
   ];
 

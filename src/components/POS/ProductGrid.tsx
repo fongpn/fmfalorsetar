@@ -50,7 +50,7 @@ export function ProductGrid({ products, onAddToCart, loading }: ProductGridProps
             
             <div className="flex items-center justify-between">
               <span className="text-lg font-semibold text-gray-900">
-                ${product.price.toFixed(2)}
+                RM{product.price.toFixed(2)}
               </span>
               <div className="flex items-center space-x-1">
                 {product.current_stock <= 5 && product.current_stock > 0 && (

@@ -109,12 +109,12 @@ export function CheckoutModal({ isOpen, onClose, onSuccess, items, total }: Chec
 
           {/* Order Summary */}
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-medium text-gray-900 mb-3">Order Summary</h3>
+                    <span>RM{item.subtotal.toFixed(2)}</span>
             <div className="space-y-2">
               {items.map((item) => (
                 <div key={item.product.id} className="flex justify-between text-sm">
                   <span>{item.product.name} × {item.quantity}</span>
-                  <span>${item.subtotal.toFixed(2)}</span>
+                  <span>RM{total.toFixed(2)}</span>
                 </div>
               ))}
               <div className="border-t pt-2 flex justify-between font-semibold">
@@ -196,7 +196,7 @@ export function CheckoutModal({ isOpen, onClose, onSuccess, items, total }: Chec
               disabled={loading || items.length === 0}
               className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
             >
-              {loading ? 'Processing...' : `Complete Sale ($${total.toFixed(2)})`}
+              {loading ? 'Processing...' : `Complete Sale (RM${total.toFixed(2)})`}
             </button>
           </div>
         </form>

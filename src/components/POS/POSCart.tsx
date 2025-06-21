@@ -68,8 +68,8 @@ export function POSCart({ items, onUpdateQuantity, onRemoveItem, onClearCart, to
               </div>
               
               <div className="text-right">
-                <p className="text-sm text-gray-500">${item.product.price} each</p>
-                <p className="font-semibold text-gray-900">${item.subtotal.toFixed(2)}</p>
+                <p className="text-sm text-gray-500">RM{item.product.price} each</p>
+                <p className="font-semibold text-gray-900">RM{item.subtotal.toFixed(2)}</p>
               </div>
             </div>
             
@@ -85,7 +85,7 @@ export function POSCart({ items, onUpdateQuantity, onRemoveItem, onClearCart, to
       <div className="p-4 border-t border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between text-lg font-semibold">
           <span>Total:</span>
-          <span>${total.toFixed(2)}</span>
+          <span>RM{total.toFixed(2)}</span>
         </div>
       </div>
     </div>

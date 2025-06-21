@@ -139,7 +139,7 @@ export function Shifts() {
                         <DollarSign className="h-4 w-4 mr-2" />
                         Starting Float
                       </div>
-                      <p className="font-semibold text-gray-900">${mockCurrentShift.starting_cash_float.toFixed(2)}</p>
+                      <p className="font-semibold text-gray-900">RM{mockCurrentShift.starting_cash_float.toFixed(2)}</p>
                     </div>
 
                     <div>
@@ -175,7 +175,7 @@ export function Shifts() {
                       </div>
                       <div className="ml-4">
                         <p className="text-sm font-medium text-gray-600">Revenue</p>
-                        <p className="text-2xl font-bold text-gray-900">${mockCurrentShift.current_revenue.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-gray-900">RM{mockCurrentShift.current_revenue.toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
@@ -188,7 +188,7 @@ export function Shifts() {
                       <div className="ml-4">
                         <p className="text-sm font-medium text-gray-600">Expected Cash</p>
                         <p className="text-2xl font-bold text-gray-900">
-                          ${(mockCurrentShift.starting_cash_float + mockCurrentShift.current_revenue).toFixed(2)}
+                          RM{(mockCurrentShift.starting_cash_float + mockCurrentShift.current_revenue).toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -253,6 +253,7 @@ export function Shifts() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">${shift.total_revenue.toFixed(2)}</div>
+                          <div className="text-sm font-medium text-gray-900">RM{shift.total_revenue.toFixed(2)}</div>
                           <div className="text-sm text-gray-500">{shift.total_transactions} transactions</div>
                         </div>
                       </td>
@@ -265,11 +266,11 @@ export function Shifts() {
                           )}
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              ${shift.ending_cash_balance.toFixed(2)}
+                              RM{shift.ending_cash_balance.toFixed(2)}
                             </div>
                             {shift.cash_discrepancy !== 0 && (
                               <div className="text-sm text-amber-600">
-                                {shift.cash_discrepancy > 0 ? '+' : ''}${shift.cash_discrepancy.toFixed(2)} variance
+                                {shift.cash_discrepancy > 0 ? '+' : ''}RM{shift.cash_discrepancy.toFixed(2)} variance
                               </div>
                             )}
                           </div>

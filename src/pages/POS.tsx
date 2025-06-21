@@ -164,7 +164,7 @@ export function POS() {
               className="w-full flex items-center justify-center px-4 py-3 text-lg font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
             >
               <ShoppingCart className="h-5 w-5 mr-2" />
-              Checkout (${getCartTotal().toFixed(2)})
+              Checkout (RM{getCartTotal().toFixed(2)})
             </button>
           )}
         </div>
