@@ -327,12 +327,27 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                         className="w-full p-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
                       >
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 flex-shrink-0">
+                              {member.photo_url ? (
+                                <img 
+                                  src={member.photo_url} 
+                                  alt={member.full_name}
+                                  className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                  <User className="h-5 w-5 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                            <div>
                             <p className="font-medium text-gray-900">{member.full_name}</p>
                             <p className="text-sm text-gray-500">ID: {member.member_id_string}</p>
                             {member.phone_number && (
                               <p className="text-xs text-gray-400">Phone: {member.phone_number}</p>
                             )}
+                            </div>
                           </div>
                           <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                             member.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
