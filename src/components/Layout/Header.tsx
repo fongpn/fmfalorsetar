@@ -32,7 +32,7 @@ export function Header({ title, subtitle }: HeaderProps) {
           
           <button className="p-2 text-gray-400 hover:text-gray-600 relative">
             <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
           </button>
           
           <div className="text-right">

@@ -7,6 +7,12 @@ import { Members } from './pages/Members';
 import { CheckIns } from './pages/CheckIns';
 import { POS } from './pages/POS';
 import { Products } from './pages/Products';
+import { MembershipPlans } from './pages/MembershipPlans';
+import { Coupons } from './pages/Coupons';
+import { Staff } from './pages/Staff';
+import { Shifts } from './pages/Shifts';
+import { DataManagement } from './pages/DataManagement';
+import { Settings } from './pages/Settings';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -77,6 +83,54 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Products />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/plans"
+          element={
+            <ProtectedRoute>
+              <MembershipPlans />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/coupons"
+          element={
+            <ProtectedRoute>
+              <Coupons />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute>
+              <Staff />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shifts"
+          element={
+            <ProtectedRoute>
+              <Shifts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/data"
+          element={
+            <ProtectedRoute>
+              <DataManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />
