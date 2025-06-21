@@ -18,6 +18,7 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
   const [members, setMembers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMemberSearch, setShowMemberSearch] = useState(false);
+  const [nextCouponNumber, setNextCouponNumber] = useState<number>(1);
   const { activeShift } = useShift();
   const { profile } = useAuth();
 
@@ -32,6 +33,7 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
   useEffect(() => {
     if (isOpen) {
       loadTemplates();
+      loadNextCouponNumber();
       setSearchQuery('');
       setMembers([]);
       setShowMemberSearch(false);
@@ -52,11 +54,40 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
         setFormData(prev => ({ 
           ...prev, 
           template_id: defaultTemplate.id,
-          coupon_code: generateCouponCode()
+          coupon_code: generateNextCouponCode()
         }));
       }
     }
-  }, [templates]);
+  }, [templates, nextCouponNumber]);
+
+  const loadNextCouponNumber = async () => {
+    try {
+      // Get the highest existing coupon code number
+      const { data, error } = await supabase
+        .from('sold_coupons')
+        .select('code')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      let nextNumber = 1;
+      if (data && data.length > 0) {
+        // Extract number from the last coupon code (assuming format like "1234" or "CPN-1234")
+        const lastCode = data[0].code;
+        const numberMatch = lastCode.match(/(\d{4})$/); // Get last 4 digits
+        if (numberMatch) {
+          const lastNumber = parseInt(numberMatch[1]);
+          nextNumber = lastNumber + 1;
+        }
+      }
+
+      setNextCouponNumber(nextNumber);
+    } catch (err: any) {
+      console.error('Error loading next coupon number:', err);
+      setNextCouponNumber(1); // Fallback to 1
+    }
+  };
   const loadTemplates = async () => {
     try {
       const { data, error } = await supabase
@@ -87,10 +118,15 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
     }
   };
 
-  const generateCouponCode = () => {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substr(2, 5);
-    return `CPN-${timestamp}-${random}`.toUpperCase();
+  const generateNextCouponCode = () => {
+    // Generate 4-digit padded number
+    return nextCouponNumber.toString().padStart(4, '0');
+  };
+
+  const generateNewCouponCode = () => {
+    const newCode = generateNextCouponCode();
+    setFormData(prev => ({ ...prev, coupon_code: newCode }));
+    setNextCouponNumber(prev => prev + 1);
   };
 
   const handleMemberSelect = (member: any) => {
@@ -140,8 +176,8 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
       const expiryDate = new Date(purchaseDate);
       expiryDate.setDate(expiryDate.getDate() + template.duration_days);
 
-      // Use the coupon code from form data
-      const couponCode = formData.coupon_code.trim() || generateCouponCode();
+      // Use the coupon code from form data or generate new one
+      const couponCode = formData.coupon_code.trim() || generateNextCouponCode();
 
       // Create sold coupon
       const { data: soldCoupon, error: couponError } = await supabase
@@ -234,7 +270,7 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
                 setFormData(prev => ({ 
                   ...prev, 
                   template_id: e.target.value,
-                  coupon_code: prev.coupon_code || generateCouponCode()
+                  coupon_code: prev.coupon_code || generateNextCouponCode()
                 }));
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
@@ -264,14 +300,14 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
               />
               <button
                 type="button"
-                onClick={() => setFormData(prev => ({ ...prev, coupon_code: generateCouponCode() }))}
+                onClick={generateNewCouponCode}
                 className="px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
               >
                 Generate
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Enter a custom code or click "Generate" for automatic code
+              Enter a 4-digit number or click "Generate" for next available number
             </p>
           </div>
 
@@ -368,6 +404,13 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
           </div>
 
           {selectedTemplate && (
+            (() => {
+              // Calculate expiry date for display
+              const purchaseDate = new Date();
+              const expiryDate = new Date(purchaseDate);
+              expiryDate.setDate(expiryDate.getDate() + selectedTemplate.duration_days);
+              
+              return (
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-2">Coupon Details</h4>
               <div className="space-y-1 text-sm">
@@ -385,10 +428,16 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
                 </div>
                 <div className="flex justify-between">
                   <span>Validity:</span>
-                  <span>{selectedTemplate.duration_days} days</span>
+                  <span>Until {expiryDate.toLocaleDateString('en-GB', { 
+                    day: '2-digit', 
+                    month: 'short', 
+                    year: 'numeric' 
+                  })}</span>
                 </div>
               </div>
             </div>
+              );
+            })()
           )}
 
           <div className="flex justify-end space-x-3 pt-4">
