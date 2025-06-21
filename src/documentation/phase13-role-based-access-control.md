@@ -16,12 +16,16 @@ This phase implements role-based access control (RBAC) to restrict certain UI el
 - **Implementation**: Added `adminOnly: true` property to restricted navigation items and filtered the navigation array based on user role.
 
 ### 2. Coupons Page Restrictions (`Coupons.tsx`)
-- **Hidden from CS Users**: "New Coupon Type" button is hidden from Customer Service users
+- **Hidden from CS Users**: 
+  - "New Coupon Type" button is hidden from Customer Service users
+  - "Coupons" tab (templates) is completely hidden from CS users
+- **Default Tab**: "List of Coupons" is now the default tab for all users
 - **Retained Access**: CS users can still:
   - View all sold coupons
   - Sell new coupons
   - View coupon details
   - Search and filter coupons
+- **Simplified Interface**: CS users see only the sold coupons list without tab navigation
 
 ### 3. Products Page Restrictions (`Products.tsx`)
 - **Hidden from CS Users**: "Add Product" button is hidden from Customer Service users

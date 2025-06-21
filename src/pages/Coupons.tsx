@@ -8,7 +8,7 @@ import { Plus, Search, Ticket, Calendar, Users, DollarSign, Trash2, AlertTriangl
 import { supabase } from '../lib/supabase';
 
 export function Coupons() {
-  const [activeTab, setActiveTab] = useState<'templates' | 'sold'>('templates');
+  const [activeTab, setActiveTab] = useState<'templates' | 'sold'>('sold');
   const [searchQuery, setSearchQuery] = useState('');
   const { profile } = useAuth();
   const [templates, setTemplates] = useState<any[]>([]);
@@ -157,30 +157,37 @@ export function Coupons() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-white rounded-lg border border-gray-200 p-1">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setActiveTab('sold')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeTab === 'sold'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              List of Coupons ({soldCoupons.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('templates')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeTab === 'templates'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Coupons ({templates.length})
-            </button>
+        {profile?.role === 'ADMIN' ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-1">
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setActiveTab('sold')}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'sold'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                List of Coupons ({soldCoupons.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('templates')}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'templates'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Coupons ({templates.length})
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-lg font-semibold text-gray-900">List of Coupons ({soldCoupons.length})</h3>
+            <p className="text-sm text-gray-600 mt-1">View and manage sold coupons</p>
+          </div>
+        )}
 
         {/* Error State */}
         {error && (
@@ -196,7 +203,7 @@ export function Coupons() {
         )}
 
         {/* Sold Coupons Tab */}
-        {activeTab === 'sold' && (
+        {(activeTab === 'sold' || profile?.role === 'CS') && (
           <>
             {soldCoupons.length === 0 ? (
               <div className="text-center py-12">
@@ -270,7 +277,7 @@ export function Coupons() {
         )}
 
         {/* Coupons Tab (formerly Templates) */}
-        {activeTab === 'templates' && (
+        {activeTab === 'templates' && profile?.role === 'ADMIN' && (
           <>
             {templates.length === 0 ? (
               <div className="text-center py-12">
