@@ -11,6 +11,13 @@ interface EndShiftModalProps {
   activeShift: Shift | null;
 }
 
+interface PaymentMethodBreakdown {
+  CASH: number;
+  QR: number;
+  BANK_TRANSFER: number;
+  [key: string]: number;
+}
+
 export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndShiftModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,6 +29,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
   const [shiftStats, setShiftStats] = useState({
     totalTransactions: 0,
     totalRevenue: 0,
+    paymentBreakdown: { CASH: 0, QR: 0, BANK_TRANSFER: 0 } as PaymentMethodBreakdown,
     checkIns: 0,
     salesCount: 0
   });
@@ -52,7 +60,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
       // Get shift transactions directly for cash calculation
       const { data: transactions, error } = await supabase
         .from('transactions')
-        .select('amount, type')
+        .select('amount, type, payment_method')
         .eq('shift_id', activeShift.id);
 
       if (error) throw error;
@@ -61,8 +69,24 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
         .filter(t => ['POS_SALE', 'WALK_IN', 'MEMBERSHIP', 'REGISTRATION_FEE', 'COUPON_SALE'].includes(t.type))
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
+      // Calculate payment method breakdown
+      const paymentBreakdown: PaymentMethodBreakdown = { CASH: 0, QR: 0, BANK_TRANSFER: 0 };
+      
+      (transactions || [])
+        .filter(t => ['POS_SALE', 'WALK_IN', 'MEMBERSHIP', 'REGISTRATION_FEE', 'COUPON_SALE'].includes(t.type))
+        .forEach(transaction => {
+          const amount = parseFloat(transaction.amount);
+          const method = transaction.payment_method;
+          
+          if (paymentBreakdown.hasOwnProperty(method)) {
+            paymentBreakdown[method] += amount;
+          } else {
+            paymentBreakdown[method] = amount;
+          }
+        });
+
       const stats = await shiftService.getShiftStats(activeShift.id);
-      setShiftStats({ ...stats, totalRevenue });
+      setShiftStats({ ...stats, totalRevenue, paymentBreakdown });
       
       // Set suggested ending cash balance
       const suggestedBalance = activeShift.starting_cash_float + totalRevenue;
@@ -237,6 +261,34 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
               <div className="flex justify-between border-t border-blue-200 pt-2">
                 <span className="text-blue-700 font-medium">Expected Cash:</span>
                 <span className="font-bold">RM{(expectedCash || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Method Breakdown */}
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="flex items-center space-x-2 mb-3">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              <h3 className="text-sm font-medium text-green-900">Revenue by Payment Method</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-green-700 font-medium">Cash</div>
+                <div className="text-lg font-bold text-green-900">
+                  RM{(shiftStats.paymentBreakdown.CASH || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-green-700 font-medium">QR Code</div>
+                <div className="text-lg font-bold text-green-900">
+                  RM{(shiftStats.paymentBreakdown.QR || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-green-700 font-medium">Bank Transfer</div>
+                <div className="text-lg font-bold text-green-900">
+                  RM{(shiftStats.paymentBreakdown.BANK_TRANSFER || 0).toFixed(2)}
+                </div>
               </div>
             </div>
           </div>
