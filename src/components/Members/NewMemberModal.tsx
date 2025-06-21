@@ -313,12 +313,21 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
               <input
                 type="text"
                 value={memberData.member_id_string}
+                onChange={(e) => setMemberData(prev => ({ ...prev, member_id_string: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 bg-gray-50"
-                placeholder="Auto-generated 4-digit number"
+                placeholder="Enter member ID or leave for auto-generation"
                 required
-                readOnly
               />
-              <p className="text-xs text-gray-500 mt-1">Auto-generated sequential 4-digit number</p>
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs text-gray-500">Can be manually entered or auto-generated</p>
+                <button
+                  type="button"
+                  onClick={generateMemberId}
+                  className="text-xs text-orange-600 hover:text-orange-700 underline"
+                >
+                  Auto-generate
+                </button>
+              </div>
             </div>
 
             <div>

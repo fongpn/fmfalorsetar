@@ -95,6 +95,11 @@ class MemberService {
   }
 
   async createMember(memberData: NewMemberData): Promise<Member> {
+    // If member_id_string is empty, generate one
+    if (!memberData.member_id_string || memberData.member_id_string.trim() === '') {
+      memberData.member_id_string = await this.generateMemberId();
+    }
+
     const { data, error } = await supabase
       .from('members')
       .insert([memberData])
