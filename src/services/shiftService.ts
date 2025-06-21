@@ -178,7 +178,7 @@ class ShiftService {
           *,
           starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name),
           ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name),
-          next_shift:shifts!shifts_next_shift_id_fkey(id, start_time)
+          next_shift:shifts(id, start_time)
         `)
         .eq('status', 'CLOSED')
         .order('start_time', { ascending: false })
@@ -246,14 +246,14 @@ class ShiftService {
         .from('shifts')
         .select(`
           handover_notes,
-          previous_shift:shifts!shifts_next_shift_id_fkey(
+          previous_shift:shifts(
             id,
             start_time,
             end_time,
             handover_notes,
             ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)
           ),
-          next_shift:shifts!shifts_next_shift_id_fkey(
+          next_shift:shifts(
             id,
             start_time,
             starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name)

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Clock, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
 import { shiftService, StartShiftData } from '../../services/shiftService';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 interface StartShiftModalProps {
   isOpen: boolean;

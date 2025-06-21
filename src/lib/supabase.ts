@@ -75,6 +75,8 @@ export interface Shift {
   ending_cash_balance?: number;
   system_calculated_cash?: number;
   cash_discrepancy?: number;
+  next_shift_id?: string;
+  handover_notes?: string;
   status: 'ACTIVE' | 'CLOSED';
   created_at: string;
   updated_at: string;
