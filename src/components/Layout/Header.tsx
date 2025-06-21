@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Bell, Search, X } from 'lucide-react';
+import { Bell, LogOut, X, Clock } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -8,11 +8,47 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
-  const { profile } = useAuth();
-  const [showNotifications, setShowNotifications] = React.useState(false);
+  const { profile, signOut } = useAuth();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const handleBellClick = () => {
     setShowNotifications(!showNotifications);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   return (
@@ -25,28 +61,44 @@ export function Header({ title, subtitle }: HeaderProps) {
           )}
         </div>
         
-        <div className="flex items-center space-x-4 relative">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            />
+        <div className="flex items-center space-x-6 relative">
+          {/* Current Time and Date */}
+          <div className="text-right">
+            <div className="flex items-center text-sm font-medium text-gray-900">
+              <Clock className="h-4 w-4 mr-2 text-gray-500" />
+              {formatTime(currentTime)}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">{formatDate(currentTime)}</p>
           </div>
-          
+
+          {/* User Info */}
+          <div className="text-right">
+            <p className="text-sm font-medium text-gray-900">{profile?.full_name}</p>
+            <p className="text-xs text-gray-500">
+              {profile?.role === 'ADMIN' ? 'Administrator' : 
+               profile?.role === 'CS' ? 'Customer Service' : 
+               profile?.role}
+            </p>
+          </div>
+
+          {/* Notifications */}
           <button 
             onClick={handleBellClick}
-            className="p-2 text-gray-400 hover:text-gray-600 relative"
+            className="p-2 text-gray-400 hover:text-gray-600 relative transition-colors"
           >
             <Bell className="h-5 w-5" />
             <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
           </button>
           
-          <div className="text-right">
-            <p className="text-sm font-medium text-gray-900">{profile?.full_name}</p>
-            <p className="text-xs text-gray-500">{profile?.role}</p>
-          </div>
+          {/* Logout Button */}
+          <button
+            onClick={handleSignOut}
+            className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-red-600 transition-colors"
+            title="Sign Out"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </button>
         </div>
       </div>
 
