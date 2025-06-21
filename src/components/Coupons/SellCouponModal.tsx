@@ -174,7 +174,8 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
       // Calculate expiry date
       const purchaseDate = new Date();
       const expiryDate = new Date(purchaseDate);
-      expiryDate.setDate(expiryDate.getDate() + template.duration_days);
+      // Set expiry to 3 months from purchase date
+      expiryDate.setMonth(expiryDate.getMonth() + 3);
 
       // Use the coupon code from form data or generate new one
       const couponCode = formData.coupon_code.trim() || generateNextCouponCode();
@@ -408,7 +409,8 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
               // Calculate expiry date for display
               const purchaseDate = new Date();
               const expiryDate = new Date(purchaseDate);
-              expiryDate.setDate(expiryDate.getDate() + selectedTemplate.duration_days);
+              // Set expiry to 3 months from purchase date
+              expiryDate.setMonth(expiryDate.getMonth() + 3);
               
               return (
             <div className="bg-gray-50 p-4 rounded-lg">
