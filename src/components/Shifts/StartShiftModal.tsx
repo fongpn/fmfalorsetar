@@ -27,6 +27,8 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
   }, [isOpen]);
 
   const loadPreviousShiftNotes = async () => {
+    if (!profile?.id) return;
+    
     try {
       const { data: lastShift, error } = await supabase
         .from('shifts')
@@ -37,6 +39,7 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
           handover_to_staff_profile:profiles!shifts_handover_to_staff_id_fkey(full_name)
         `)
         .eq('status', 'CLOSED')
+        .eq('starting_staff_id', profile.id)
         .order('end_time', { ascending: false })
         .limit(1)
         .maybeSingle();

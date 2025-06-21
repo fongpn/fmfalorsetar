@@ -24,11 +24,12 @@ export interface ShiftResult {
 class ShiftService {
   async startShift(shiftData: StartShiftData): Promise<ShiftResult> {
     try {
-      // Check if there's already an active shift
+      // Check if the current user already has an active shift
       const { data: existingShift, error: checkError } = await supabase
         .from('shifts')
         .select('id')
         .eq('status', 'ACTIVE')
+        .eq('starting_staff_id', shiftData.starting_staff_id)
         .maybeSingle();
 
       if (checkError) throw checkError;
@@ -36,7 +37,7 @@ class ShiftService {
       if (existingShift) {
         return {
           success: false,
-          message: 'There is already an active shift. Please end the current shift before starting a new one.'
+          message: 'You already have an active shift. Please end your current shift before starting a new one.'
         };
       }
 
@@ -59,6 +60,7 @@ class ShiftService {
           .from('shifts')
           .select('id')
           .eq('status', 'CLOSED')
+          .eq('starting_staff_id', shiftData.starting_staff_id)
           .order('end_time', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -152,7 +154,31 @@ class ShiftService {
     }
   }
 
-  async getActiveShift(): Promise<Shift | null> {
+  async getActiveShift(staffId?: string): Promise<Shift | null> {
+    try {
+      let query = supabase
+        .from('shifts')
+        .select(`
+          *,
+          starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name),
+          ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)
+        `)
+        .eq('status', 'ACTIVE');
+
+      if (staffId) {
+        query = query.eq('starting_staff_id', staffId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching active shift:', error);
+      return null;
+    }
+  }
+
+  async getAllActiveShifts(): Promise<any[]> {
     try {
       const { data, error } = await supabase
         .from('shifts')
@@ -162,13 +188,13 @@ class ShiftService {
           ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)
         `)
         .eq('status', 'ACTIVE')
-        .maybeSingle();
+        .order('start_time', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data || [];
     } catch (error) {
-      console.error('Error fetching active shift:', error);
-      return null;
+      console.error('Error fetching all active shifts:', error);
+      return [];
     }
   }
 
