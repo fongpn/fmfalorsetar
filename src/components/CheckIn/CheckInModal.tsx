@@ -392,33 +392,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 flex-shrink-0">
-                              {member.photo_url ? (
-                                <img 
-                                  src={member.photo_url} 
-                                  alt={member.full_name}
-                                  className="w-10 h-10 rounded-full object-cover border border-gray-200"
-                                  onError={(e) => {
-                                    // Replace the image with a default avatar when it fails to load
-                                    const target = e.currentTarget;
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = `
-                                        <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center border border-gray-200">
-                                          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                          </svg>
-                                        </div>
-                                      `;
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center border border-gray-200">
-                                  <User className="h-5 w-5 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
+                            <MemberAvatar member={member} size="w-10 h-10" />
                             <div>
                               <p className="font-medium text-gray-900">{member.full_name}</p>
                               <p className="text-sm text-gray-500">ID: {member.member_id_string}</p>
@@ -601,5 +575,56 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
         </div>
       </div>
     </div>
+  );
+}
+
+// Separate component for member avatar with proper error handling
+function MemberAvatar({ member, size = "w-10 h-10" }: { member: any; size?: string }) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Reset error state when member changes
+  useEffect(() => {
+    setImageError(false);
+    setImageLoaded(false);
+  }, [member.id, member.photo_url]);
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(false);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setImageError(false);
+  };
+
+  // Show default avatar if no photo URL, image failed to load, or still loading
+  if (!member.photo_url || imageError || !imageLoaded) {
+    return (
+      <div className={`${size} bg-gray-200 rounded-full flex items-center justify-center border border-gray-200 flex-shrink-0`}>
+        <User className="h-5 w-5 text-gray-400" />
+        {/* Hidden image to handle loading/error states */}
+        {member.photo_url && !imageError && (
+          <img
+            src={member.photo_url}
+            alt=""
+            className="hidden"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Show actual image once it's loaded successfully
+  return (
+    <img
+      src={member.photo_url}
+      alt={member.full_name}
+      className={`${size} rounded-full object-cover border border-gray-200 flex-shrink-0`}
+      onError={handleImageError}
+    />
   );
 }
