@@ -20,6 +20,7 @@ export function Settings() {
     
     // Financial Settings
     walk_in_rate: 15.00,
+    walk_in_student_rate: 8.00,
     registration_fee_default: 25.00,
     grace_period_days: 7,
     late_fee_amount: 10.00,
@@ -254,6 +255,21 @@ export function Settings() {
                   onChange={(e) => handleSettingChange('walk_in_rate', parseFloat(e.target.value))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
                 />
+                <p className="text-xs text-gray-500 mt-1">Regular walk-in daily rate</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Student Walk-in Rate (RM)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={settings.walk_in_student_rate}
+                  onChange={(e) => handleSettingChange('walk_in_student_rate', parseFloat(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Student walk-in daily rate (discounted)</p>
               </div>
 
               <div>

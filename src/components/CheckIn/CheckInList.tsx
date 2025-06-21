@@ -14,6 +14,7 @@ export function CheckInList({ checkIns, loading }: CheckInListProps) {
       case 'COUPON':
         return <Ticket className="h-4 w-4 text-blue-600" />;
       case 'WALK_IN':
+        // Check if it's a student walk-in based on notes
         return <DollarSign className="h-4 w-4 text-orange-600" />;
       default:
         return <User className="h-4 w-4 text-gray-600" />;
@@ -30,6 +31,23 @@ export function CheckInList({ checkIns, loading }: CheckInListProps) {
         return 'Walk-in';
       default:
         return type;
+    }
+  };
+
+  const getCheckInTypeFromNotes = (checkIn: any) => {
+    if (checkIn.type === 'WALK_IN' && checkIn.notes?.toLowerCase().includes('student')) {
+      return { label: 'Student', icon: <DollarSign className="h-4 w-4 text-blue-600" />, color: 'bg-blue-100 text-blue-800' };
+    }
+    
+    switch (checkIn.type) {
+      case 'MEMBER':
+        return { label: 'Member', icon: <User className="h-4 w-4 text-green-600" />, color: 'bg-green-100 text-green-800' };
+      case 'COUPON':
+        return { label: 'Coupon', icon: <Ticket className="h-4 w-4 text-blue-600" />, color: 'bg-blue-100 text-blue-800' };
+      case 'WALK_IN':
+        return { label: 'Walk-in', icon: <DollarSign className="h-4 w-4 text-orange-600" />, color: 'bg-orange-100 text-orange-800' };
+      default:
+        return { label: checkIn.type, icon: <User className="h-4 w-4 text-gray-600" />, color: 'bg-gray-100 text-gray-800' };
     }
   };
 
@@ -69,24 +87,24 @@ export function CheckInList({ checkIns, loading }: CheckInListProps) {
       
       <div className="divide-y divide-gray-200">
         {checkIns.map((checkIn) => (
+          (() => {
+            const typeInfo = getCheckInTypeFromNotes(checkIn);
+            return (
           <div key={checkIn.id} className="p-4 hover:bg-gray-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
-                  {getCheckInIcon(checkIn.type)}
+                  {typeInfo.icon}
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-900">
-                      {checkIn.member?.full_name || 'Walk-in Guest'}
+                      {checkIn.member?.full_name || 
+                       (checkIn.notes?.toLowerCase().includes('student') ? 'Student Guest' : 'Walk-in Guest')}
                     </span>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      checkIn.type === 'MEMBER' ? 'bg-green-100 text-green-800' :
-                      checkIn.type === 'COUPON' ? 'bg-blue-100 text-blue-800' :
-                      'bg-orange-100 text-orange-800'
-                    }`}>
-                      {getCheckInTypeLabel(checkIn.type)}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color}`}>
+                      {typeInfo.label}
                     </span>
                   </div>
                   
@@ -121,6 +139,8 @@ export function CheckInList({ checkIns, loading }: CheckInListProps) {
               </div>
             </div>
           </div>
+            );
+          })()
         ))}
       </div>
       

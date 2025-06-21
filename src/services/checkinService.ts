@@ -10,7 +10,7 @@ export interface MemberValidationResult {
 }
 
 export interface CheckInData {
-  type: 'MEMBER' | 'COUPON' | 'WALK_IN';
+  type: 'MEMBER' | 'COUPON' | 'WALK_IN' | 'WALK_IN_STUDENT';
   member_id?: string;
   sold_coupon_id?: string;
   shift_id: string;
@@ -184,6 +184,9 @@ class CheckInService {
         case 'WALK_IN':
           result = await this.processWalkInCheckIn(checkInData);
           break;
+        case 'WALK_IN_STUDENT':
+          result = await this.processStudentWalkInCheckIn(checkInData);
+          break;
         default:
           throw new Error('Invalid check-in type');
       }
@@ -353,6 +356,57 @@ class CheckInService {
     };
   }
 
+  private async processStudentWalkInCheckIn(checkInData: CheckInData): Promise<CheckInResult> {
+    // Get student walk-in rate from system settings
+    const { data: setting, error: settingError } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'walk_in_student_rate')
+      .single();
+
+    if (settingError) throw settingError;
+
+    const studentRate = parseFloat(setting.value);
+
+    // Create transaction for student walk-in payment
+    const { data: transaction, error: transactionError } = await supabase
+      .from('transactions')
+      .insert([{
+        shift_id: checkInData.shift_id,
+        amount: studentRate,
+        payment_method: 'CASH', // Default to cash, can be modified
+        type: 'WALK_IN',
+        processed_by: checkInData.processed_by,
+        status: 'PAID',
+        notes: `Student walk-in: ${checkInData.notes || 'Student access'}`
+      }])
+      .select()
+      .single();
+
+    if (transactionError) throw transactionError;
+
+    // Create check-in record
+    const { data: checkIn, error } = await supabase
+      .from('check_ins')
+      .insert([{
+        shift_id: checkInData.shift_id,
+        type: 'WALK_IN',
+        processed_by: checkInData.processed_by,
+        notes: `Student: ${checkInData.notes || 'Student walk-in'}`
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: `Student check-in successful! Payment: RM${studentRate}`,
+      check_in: checkIn,
+      transaction
+    };
+  }
+
   async getTodayCheckIns(shiftId?: string): Promise<any[]> {
     let query = supabase
       .from('check_ins')
@@ -385,6 +439,7 @@ class CheckInService {
     members: number;
     coupons: number;
     walkIns: number;
+    students: number;
     revenue: number;
   }> {
     try {
@@ -421,7 +476,8 @@ class CheckInService {
         total: checkIns.length,
         members: checkIns.filter(c => c.type === 'MEMBER').length,
         coupons: checkIns.filter(c => c.type === 'COUPON').length,
-        walkIns: checkIns.filter(c => c.type === 'WALK_IN').length,
+        walkIns: checkIns.filter(c => c.type === 'WALK_IN' && !c.notes?.toLowerCase().includes('student')).length,
+        students: checkIns.filter(c => c.type === 'WALK_IN' && c.notes?.toLowerCase().includes('student')).length,
         revenue: transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0)
       };
 

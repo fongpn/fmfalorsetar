@@ -16,6 +16,7 @@ export interface SettingsData {
   
   // Financial Settings
   walk_in_rate: number;
+  walk_in_student_rate: number;
   registration_fee_default: number;
   grace_period_days: number;
   late_fee_amount: number;
@@ -57,6 +58,7 @@ class SettingsService {
         
         // Financial Settings
         walk_in_rate: parseFloat(settingsMap.walk_in_rate) || 15.00,
+        walk_in_student_rate: parseFloat(settingsMap.walk_in_student_rate) || 8.00,
         registration_fee_default: parseFloat(settingsMap.registration_fee_default) || 50.00,
         grace_period_days: parseInt(settingsMap.grace_period_days) || 7,
         late_fee_amount: parseFloat(settingsMap.late_fee_amount) || 10.00,
@@ -90,6 +92,7 @@ class SettingsService {
         
         // Financial Settings
         { key: 'walk_in_rate', value: settings.walk_in_rate.toString(), description: 'Daily rate for walk-in gym access' },
+        { key: 'walk_in_student_rate', value: settings.walk_in_student_rate.toString(), description: 'Daily rate for student walk-in gym access' },
         { key: 'registration_fee_default', value: settings.registration_fee_default.toString(), description: 'Default one-time registration fee for new members' },
         { key: 'grace_period_days', value: settings.grace_period_days.toString(), description: 'Number of days members can access gym after membership expires' },
         { key: 'late_fee_amount', value: settings.late_fee_amount.toString(), description: 'Late fee amount for overdue payments' },

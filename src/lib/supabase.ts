@@ -105,6 +105,8 @@ export interface Transaction {
   amount: number;
   payment_method: string;
   type: 'MEMBERSHIP' | 'COUPON_SALE' | 'POS_SALE' | 'WALK_IN' | 'REGISTRATION_FEE';
+  // Note: WALK_IN type will be used for both regular and student walk-ins
+  // The distinction will be made in the notes field and amount
   related_id?: string;
   processed_by: string;
   status: 'PAID' | 'OUTSTANDING';

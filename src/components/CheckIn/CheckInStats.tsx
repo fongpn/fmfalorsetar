@@ -7,6 +7,7 @@ interface CheckInStatsProps {
     members: number;
     coupons: number;
     walkIns: number;
+    students: number;
     revenue: number;
   };
   loading: boolean;
@@ -45,14 +46,23 @@ export function CheckInStats({ stats, loading }: CheckInStatsProps) {
       color: 'bg-orange-500',
       textColor: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      subtitle: `RM${stats.revenue.toFixed(2)} revenue`
+      subtitle: `Regular walk-ins`
+    },
+    {
+      title: 'Students',
+      value: stats.students.toString(),
+      icon: DollarSign,
+      color: 'bg-blue-500',
+      textColor: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      subtitle: `Student walk-ins`
     },
   ];
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="animate-pulse">
               <div className="flex items-center">
@@ -70,7 +80,7 @@ export function CheckInStats({ stats, loading }: CheckInStatsProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
       {statCards.map((stat, index) => (
         <div key={index} className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center">
