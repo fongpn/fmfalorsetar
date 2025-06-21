@@ -155,7 +155,7 @@ class MemberService {
     const { data: members, error } = await supabase
       .from('members')
       .select('*')
-      .or(`full_name.ilike.%${query}%,member_id_string.ilike.%${query}%,email.ilike.%${query}%`)
+      .or(`full_name.ilike.%${query}%,member_id_string.ilike.%${query}%,phone_number.ilike.%${query}%`)
       .order('full_name');
 
     if (error) throw error;

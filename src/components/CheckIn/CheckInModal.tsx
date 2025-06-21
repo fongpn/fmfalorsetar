@@ -24,6 +24,8 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
   // Member check-in state
   const [memberIdInput, setMemberIdInput] = useState('');
   const [memberValidation, setMemberValidation] = useState<any>(null);
+  const [memberSearchResults, setMemberSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   // Coupon check-in state
   const [couponCodeInput, setCouponCodeInput] = useState('');
@@ -50,16 +52,62 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
   };
 
   const validateMember = async () => {
-    if (!memberIdInput.trim()) {
-      setError('Please enter a member ID');
+    const query = memberIdInput.trim();
+    if (!query) {
+      setError('Please enter Member ID, Phone Number, or Name');
       return;
     }
 
     setLoading(true);
     setError('');
+    setMemberSearchResults([]);
+    setShowSearchResults(false);
     
     try {
-      const validation = await checkinService.validateMemberAccess(memberIdInput.trim());
+      // First try exact member ID match
+      let validation = await checkinService.validateMemberAccess(query);
+      
+      if (validation.valid) {
+        setMemberValidation(validation);
+        setShowSearchResults(false);
+      } else {
+        // If exact match fails, search by multiple criteria
+        const searchResults = await memberService.searchMembers(query);
+        
+        if (searchResults.length === 0) {
+          setError('No members found matching your search');
+          setMemberValidation(null);
+        } else if (searchResults.length === 1) {
+          // Single result - validate directly
+          const singleMember = searchResults[0];
+          const singleValidation = await checkinService.validateMemberAccess(singleMember.member_id_string);
+          setMemberValidation(singleValidation);
+          setMemberIdInput(singleMember.member_id_string);
+          setShowSearchResults(false);
+        } else {
+          // Multiple results - show selection list
+          setMemberSearchResults(searchResults);
+          setShowSearchResults(true);
+          setMemberValidation(null);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setMemberValidation(null);
+      setMemberSearchResults([]);
+      setShowSearchResults(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectMember = async (member: any) => {
+    setMemberIdInput(member.member_id_string);
+    setShowSearchResults(false);
+    setMemberSearchResults([]);
+    
+    try {
+      const validation = await checkinService.validateMemberAccess(member.member_id_string);
       setMemberValidation(validation);
       
       if (!validation.valid) {
@@ -68,11 +116,8 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
     } catch (err: any) {
       setError(err.message);
       setMemberValidation(null);
-    } finally {
-      setLoading(false);
     }
   };
-
   const validateCoupon = async () => {
     if (!couponCodeInput.trim()) {
       setError('Please enter a coupon code');
@@ -238,7 +283,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Member ID
+                  Member ID / Phone Number / Name
                 </label>
                 <div className="flex space-x-2">
                   <input
@@ -247,9 +292,11 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                     onChange={(e) => {
                       setMemberIdInput(e.target.value);
                       setMemberValidation(null);
+                      setMemberSearchResults([]);
+                      setShowSearchResults(false);
                       setError('');
                     }}
-                    placeholder="FMF-001 or scan barcode"
+                    placeholder="Enter Member ID, Phone, or Name"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
                     onKeyPress={(e) => e.key === 'Enter' && validateMember()}
                   />
@@ -263,6 +310,44 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                 </div>
               </div>
 
+              {/* Search Results */}
+              {showSearchResults && memberSearchResults.length > 0 && (
+                <div className="border border-gray-200 rounded-lg max-h-60 overflow-y-auto">
+                  <div className="p-3 bg-gray-50 border-b border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-900">
+                      Found {memberSearchResults.length} member{memberSearchResults.length !== 1 ? 's' : ''}
+                    </h4>
+                    <p className="text-xs text-gray-500">Click to select a member</p>
+                  </div>
+                  <div className="divide-y divide-gray-200">
+                    {memberSearchResults.map((member) => (
+                      <button
+                        key={member.id}
+                        onClick={() => selectMember(member)}
+                        className="w-full p-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900">{member.full_name}</p>
+                            <p className="text-sm text-gray-500">ID: {member.member_id_string}</p>
+                            {member.phone_number && (
+                              <p className="text-xs text-gray-400">Phone: {member.phone_number}</p>
+                            )}
+                          </div>
+                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            member.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                            member.status === 'IN_GRACE' ? 'bg-amber-100 text-amber-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {member.status === 'ACTIVE' ? 'Active' :
+                             member.status === 'IN_GRACE' ? 'Grace' : 'Expired'}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {memberValidation && (
                 <div className={`p-4 rounded-lg border ${
                   memberValidation.valid 
