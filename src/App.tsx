@@ -55,18 +55,18 @@ function AppContent() {
           }
         />
         <Route
-          path="/members"
-          element={
-            <ProtectedRoute>
-              <Members />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/checkins"
           element={
             <ProtectedRoute>
               <CheckIns />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/coupons"
+          element={
+            <ProtectedRoute>
+              <Coupons />
             </ProtectedRoute>
           }
         />
@@ -87,18 +87,18 @@ function AppContent() {
           }
         />
         <Route
-          path="/plans"
+          path="/members"
           element={
             <ProtectedRoute>
-              <MembershipPlans />
+              <Members />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/coupons"
+          path="/plans"
           element={
             <ProtectedRoute>
-              <Coupons />
+              <MembershipPlans />
             </ProtectedRoute>
           }
         />

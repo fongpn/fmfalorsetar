@@ -19,15 +19,14 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Members', href: '/members', icon: Users },
-  { name: 'Check-ins', href: '/checkins', icon: UserCheck },
-  { name: 'Membership Plans', href: '/plans', icon: CreditCard },
+  { name: 'Check-in', href: '/checkins', icon: UserCheck },
   { name: 'Coupons', href: '/coupons', icon: FileText },
   { name: 'POS & Inventory', href: '/pos', icon: ShoppingCart },
+  { name: 'Membership Plans', href: '/plans', icon: CreditCard },
   { name: 'Products', href: '/products', icon: Package },
   { name: 'Staff Management', href: '/staff', icon: Users },
   { name: 'Shifts', href: '/shifts', icon: Clock },
-  { name: 'Data Management', href: '/data', icon: Download },
+  { name: 'Data Management', href: '/data', icon: Upload },
   { name: 'System Settings', href: '/settings', icon: Settings },
 ];
 
