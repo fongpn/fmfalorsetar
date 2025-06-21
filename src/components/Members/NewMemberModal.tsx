@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Mail, Phone, CreditCard, Camera, RotateCcw, Check, IdCard } from 'lucide-react';
+import { X, User, Mail, Phone, CreditCard, Camera, RotateCcw, Check, Car as IdCard } from 'lucide-react';
 import { memberService } from '../../services/memberService';
 import { useShift } from '../../hooks/useShift';
 import { useAuth } from '../../contexts/AuthContext';
