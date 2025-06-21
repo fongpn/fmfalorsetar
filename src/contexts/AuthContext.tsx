@@ -22,28 +22,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Clear any invalid tokens on startup
-    const clearInvalidTokens = async () => {
+    // Get initial session and set up auth state change listener
+    const initializeAuth = async () => {
       try {
+        // Get initial session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.warn('Session error, clearing auth data:', error.message);
+          console.warn('Initial session error, clearing auth data:', error.message);
           await supabase.auth.signOut();
           if (mounted) {
             setUser(null);
             setSession(null);
+            setProfile(null);
           }
         } else if (mounted) {
           setUser(session?.user ?? null);
           setSession(session);
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          }
         }
       } catch (error) {
-        console.error('Error getting session:', error);
-        // Clear auth state on any error
+        console.error('Error initializing auth:', error);
         if (mounted) {
           setUser(null);
           setSession(null);
+          setProfile(null);
         }
       } finally {
         if (mounted) {
@@ -52,40 +57,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    clearInvalidTokens();
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-      setUser(session?.user ?? null);
-    });
+    initializeAuth();
+
+    // Set up auth state change listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('Token refreshed successfully');
-      } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out');
-      }
+      console.log('Auth state change:', event);
       
-      // Handle token refresh errors
+      // Handle token refresh errors and sign out events
       if (event === 'TOKEN_REFRESHED' && !session) {
         console.warn('Token refresh failed, signing out');
         await supabase.auth.signOut();
         setUser(null);
         setSession(null);
+        setProfile(null);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
+        setUser(null);
+        setSession(null);
+        setProfile(null);
       } else {
         setUser(session?.user ?? null);
         setSession(session);
+        
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
       }
-      
-      setLoading(false);
     });
 
     return () => {
@@ -107,8 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -121,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
     } catch (error) {
       console.error('Sign in error:', error);
-      return { error };
+      throw error;
     }
   };
 
