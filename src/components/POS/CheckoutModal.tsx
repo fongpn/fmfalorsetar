@@ -120,7 +120,6 @@ export function CheckoutModal({ isOpen, onClose, onSuccess, items, total }: Chec
               <div className="border-t pt-2 flex justify-between font-semibold">
                 <span>Total</span>
                 <span>RM{total.toFixed(2)}</span>
-                <span>${total.toFixed(2)}</span>
               </div>
             </div>
           </div>
