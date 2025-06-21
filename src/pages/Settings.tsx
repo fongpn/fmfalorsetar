@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
-import { Save, Settings as SettingsIcon, DollarSign, Clock, Mail, Shield } from 'lucide-react';
+import { Save, Settings as SettingsIcon, DollarSign, Clock, Mail, Shield, CheckCircle, AlertCircle } from 'lucide-react';
+import { settingsService, SettingsData } from '../services/settingsService';
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState<'general' | 'financial' | 'notifications' | 'security'>('general');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<SettingsData>({
     // General Settings
     gym_name: 'FMF Gym',
-    gym_address: '123 Fitness Street, City, State 12345',
-    gym_phone: '+1 (555) 123-4567',
+    gym_address: '123 Fitness Street, Alor Setar, Kedah',
+    gym_phone: '+60 12-345 6789',
     gym_email: 'info@fmfgym.com',
-    timezone: 'America/New_York',
+    timezone: 'Asia/Kuala_Lumpur',
     
     // Financial Settings
     walk_in_rate: 15.00,
@@ -31,18 +36,85 @@ export function Settings() {
     two_factor_auth: false
   });
 
-  const handleSettingChange = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+  React.useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await settingsService.getAllSettings();
+      setSettings(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Saving settings:', settings);
+  const handleSettingChange = (key: string, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+    // Clear success message when user makes changes
+    if (success) setSuccess(null);
   };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+      
+      const result = await settingsService.updateSettings(settings);
+      
+      if (result.success) {
+        setSuccess(result.message);
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(result.message);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Layout title="System Settings" subtitle="Configure system preferences and business rules">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="System Settings" subtitle="Configure system preferences and business rules">
       <div className="space-y-6">
+        {/* Status Messages */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <div>
+              <p className="text-red-600 font-medium">Error</p>
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <div>
+              <p className="text-green-600 font-medium">Success</p>
+              <p className="text-green-600 text-sm">{success}</p>
+            </div>
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg border border-gray-200 p-1">
           <div className="flex space-x-1">
@@ -157,8 +229,9 @@ export function Settings() {
                 >
                   <option value="Asia/Kuala_Lumpur">Malaysia Time (GMT+8)</option>
                   <option value="Asia/Singapore">Singapore Time (GMT+8)</option>
-                  <option value="Asia/Bangkok">Thailand Time (GMT+7)</option>
-                  <option value="Asia/Jakarta">Indonesia Time (GMT+7)</option>
+                  <option value="Asia/Bangkok">Bangkok Time (GMT+7)</option>
+                  <option value="Asia/Jakarta">Jakarta Time (GMT+7)</option>
+                  <option value="Asia/Manila">Manila Time (GMT+8)</option>
                 </select>
               </div>
             </div>
@@ -346,10 +419,11 @@ export function Settings() {
         <div className="flex justify-end">
           <button
             onClick={handleSave}
+            disabled={saving}
             className="flex items-center px-6 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
           >
             <Save className="h-4 w-4 mr-2" />
-            Save Settings
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       </div>
