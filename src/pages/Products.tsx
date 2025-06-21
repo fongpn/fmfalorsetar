@@ -22,7 +22,7 @@ export function Products() {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [showInactive]);
 
   useEffect(() => {
     filterProducts();
