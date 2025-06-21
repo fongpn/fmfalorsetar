@@ -1,51 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Car as CarIcon, Banknote, Smartphone, QrCode, AlertCircle } from 'lucide-react';
-// Using a more standard icon for ID Card
-import { VscVscode as IdCard } from 'react-icons/vsc';
-
-
-// --- MOCK DATA AND SERVICES FOR DEMONSTRATION ---
-// In your actual app, you would remove this section and use your real imports.
-
-type MembershipPlan = {
-  id: string;
-  name: string;
-  price: number;
-  duration_months: number;
-  has_registration_fee: boolean;
-  free_months_on_signup: number;
-  is_active: boolean;
-};
-
-const memberService = {
-  getMembershipPlans: async (): Promise<MembershipPlan[]> => {
-    console.log('Fetching membership plans...');
-    await new Promise(res => setTimeout(res, 500)); // Simulate network delay
-    return [
-      { id: 'plan1', name: 'Monthly Basic', price: 50.00, duration_months: 1, has_registration_fee: true, free_months_on_signup: 0, is_active: true },
-      { id: 'plan2', name: 'Quarterly Gold', price: 135.00, duration_months: 3, has_registration_fee: true, free_months_on_signup: 0, is_active: true },
-      { id: 'plan3', name: 'Annual VIP (12 + 2)', price: 450.00, duration_months: 12, has_registration_fee: false, free_months_on_signup: 2, is_active: true },
-    ];
-  },
-  getRegistrationFee: async (): Promise<number> => 50.00,
-  generateMemberId: async (): Promise<string> => `FMF-${Date.now().toString().slice(-6)}`,
-  createMember: async (data: any) => {
-    console.log('Creating member:', data);
-    await new Promise(res => setTimeout(res, 1000));
-    return { ...data, id: `member-${Date.now()}` };
-  },
-  purchaseMembership: async (data: any) => {
-    console.log('Purchasing membership:', data);
-    await new Promise(res => setTimeout(res, 1000));
-    return { success: true };
-  }
-};
-
-const useShift = () => ({ activeShift: { id: 'shift-active-123' } });
-const useAuth = () => ({ profile: { id: 'cs-user-456' } });
-
-// --- END OF MOCK DATA AND SERVICES ---
-
+import { memberService } from '../../services/memberService';
+import { useShift } from '../../hooks/useShift';
+import { useAuth } from '../../contexts/AuthContext';
+import { MembershipPlan } from '../../lib/supabase';
 
 interface NewMemberModalProps {
   isOpen: boolean;
@@ -216,7 +174,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setRegistrationFee(fee);
     } catch (err: any) {
       console.warn('Could not load registration fee:', err);
-      setRegistrationFee(50.00);
+      setRegistrationFee(50.00); // Fallback to your preferred default
     }
   };
 
@@ -225,7 +183,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       const memberId = await memberService.generateMemberId();
       setMemberData(prev => ({ ...prev, member_id_string: memberId }));
     } catch (err: any) {
-      setError('Failed to generate Member ID.');
+      setError(err.message);
     }
   };
 
@@ -403,9 +361,21 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Member ID</label>
                   <div className="flex gap-2">
-                    <input type="text" value={memberData.member_id_string} onChange={(e) => setMemberData(prev => ({ ...prev, member_id_string: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="Auto-generated ID" required />
-                    <Button type="button" variant="outline" onClick={generateMemberId}>Generate</Button>
+                    <input 
+                      type="text" 
+                      value={memberData.member_id_string} 
+                      onChange={(e) => setMemberData(prev => ({ ...prev, member_id_string: e.target.value }))} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" 
+                      placeholder="4-digit number (e.g., 0001)" 
+                      required 
+                    />
+                    <Button type="button" variant="outline" onClick={generateMemberId}>
+                      Auto
+                    </Button>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter a 4-digit number or click "Auto" to generate the next available ID
+                  </p>
                 </div>
 
                 <div>
