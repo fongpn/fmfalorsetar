@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
+import { StartShiftModal } from '../components/Shifts/StartShiftModal';
+import { EndShiftModal } from '../components/Shifts/EndShiftModal';
 import { Clock, DollarSign, User, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { shiftService } from '../services/shiftService';
 import { useShift } from '../hooks/useShift';
 
 export function Shifts() {
@@ -9,7 +11,9 @@ export function Shifts() {
   const [shiftHistory, setShiftHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { activeShift } = useShift();
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [showEndModal, setShowEndModal] = useState(false);
+  const { activeShift, refreshShift } = useShift();
 
   React.useEffect(() => {
     fetchShiftHistory();
@@ -20,19 +24,8 @@ export function Shifts() {
       setLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
-        .from('shifts')
-        .select(`
-          *,
-          starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name),
-          ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)
-        `)
-        .eq('status', 'CLOSED')
-        .order('start_time', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setShiftHistory(data || []);
+      const data = await shiftService.getShiftHistory(10);
+      setShiftHistory(data);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -47,6 +40,11 @@ export function Shifts() {
     const hours = Math.floor(duration / (1000 * 60 * 60));
     const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
+  };
+
+  const handleShiftSuccess = () => {
+    refreshShift();
+    fetchShiftHistory();
   };
 
   if (loading) {
@@ -70,13 +68,15 @@ export function Shifts() {
           </div>
           <div className="flex space-x-3">
             <button 
-              disabled={activeShift}
+              onClick={() => setShowStartModal(true)}
+              disabled={!!activeShift}
               className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Clock className="h-4 w-4 mr-2" />
               Start Shift
             </button>
             <button 
+              onClick={() => setShowEndModal(true)}
               disabled={!activeShift}
               className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -146,7 +146,7 @@ export function Shifts() {
                         <User className="h-4 w-4 mr-2" />
                         Staff Member
                       </div>
-                      <p className="font-semibold text-gray-900">Current Staff</p>
+                      <p className="font-semibold text-gray-900">{activeShift.starting_staff_profile?.full_name || 'Unknown'}</p>
                     </div>
 
                     <div>
@@ -284,6 +284,20 @@ export function Shifts() {
           </>
         )}
       </div>
+
+      {/* Modals */}
+      <StartShiftModal
+        isOpen={showStartModal}
+        onClose={() => setShowStartModal(false)}
+        onSuccess={handleShiftSuccess}
+      />
+
+      <EndShiftModal
+        isOpen={showEndModal}
+        onClose={() => setShowEndModal(false)}
+        onSuccess={handleShiftSuccess}
+        activeShift={activeShift}
+      />
     </Layout>
   );
 }
