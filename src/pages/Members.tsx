@@ -20,6 +20,11 @@ export function Members() {
   const [selectedMember, setSelectedMember] = useState<MemberWithStatus | null>(null);
   const { members, loading, error, searchMembers, refreshMembers } = useMembers();
 
+  const filteredMembers = members.filter(member => {
+    if (statusFilter === 'ALL') return true;
+    return member.status === statusFilter;
+  });
+
   // Pagination setup
   const {
     currentPage,
@@ -48,11 +53,6 @@ export function Members() {
     setShowProfileModal(false);
     setSelectedMember(null);
   };
-
-  const filteredMembers = members.filter(member => {
-    if (statusFilter === 'ALL') return true;
-    return member.status === statusFilter;
-  });
 
   const getStatusCounts = () => {
     return {
