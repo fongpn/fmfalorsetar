@@ -188,8 +188,12 @@ export function Shifts() {
               <div className="text-center py-12">
                 <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">No active shift</p>
-                <button className="mt-4 text-orange-600 hover:text-orange-700 underline">
-                  Start a new shift
+                <button 
+                  onClick={() => setShowStartModal(true)}
+                  className="mt-6 inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-green-600 to-green-700 rounded-lg shadow-lg hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
+                >
+                  <Clock className="h-5 w-5 mr-2" />
+                  Start New Shift
                 </button>
               </div>
             )}
