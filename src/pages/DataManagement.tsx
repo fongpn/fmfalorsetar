@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
-import { Download, Upload, Database, FileText, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Download, Upload, Database, FileText, Calendar, AlertTriangle, CheckCircle, FileCheck } from 'lucide-react';
 
 export function DataManagement() {
   const [activeTab, setActiveTab] = useState<'export' | 'import' | 'backup'>('export');
@@ -59,11 +59,11 @@ export function DataManagement() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
-      console.log("No file selected");
+      console.log("No file selected or file selection canceled");
       return;
     }
     
-    console.log("File selected:", file.name, file.type, file.size);
+    console.log("File selected:", file.name, file.type, `${(file.size / 1024).toFixed(2)} KB`);
 
     // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
@@ -82,7 +82,7 @@ export function DataManagement() {
     // Here we would normally process the file
     // For now, just show a success message
     setUploadStatus('success');
-    setUploadMessage(`File "${file.name}" received. In a future update, you'll be able to preview and validate this data before importing.`);
+    setUploadMessage(`File "${file.name}" (${(file.size / 1024).toFixed(2)} KB) received successfully. In a future update, you'll be able to preview and validate this data before importing.`);
     
     // Reset the file input
     if (event.target.value) {
@@ -293,7 +293,11 @@ export function DataManagement() {
                   <div 
                     className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center"
                     onDragOver={handleDragOver}
-                    onDrop={handleDrop}
+                    onDrop={(e) => {
+                      handleDrop(e);
+                      // Force focus to ensure the UI updates
+                      e.currentTarget.focus();
+                    }}
                   >
                     <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 mb-2">
@@ -302,9 +306,9 @@ export function DataManagement() {
                     <p className="text-sm text-gray-600 mb-0">- or -</p>
                     <div className="mt-2">
                       <button 
-                        type="button"
+                        type="button" 
                         onClick={() => handleBrowseClick(memberFileInputRef)}
-                        className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 inline-flex items-center justify-center">
+                        className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 inline-flex items-center justify-center focus:ring-2 focus:ring-orange-500 focus:outline-none">
                         <Upload className="h-4 w-4 mr-2" />
                         Browse Files
                       </button>
@@ -313,7 +317,7 @@ export function DataManagement() {
                   <input
                     ref={memberFileInputRef}
                     type="file"
-                    accept=".csv"
+                    accept=".csv,.CSV"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
@@ -322,7 +326,7 @@ export function DataManagement() {
                 <div className="flex items-center space-x-4">
                   <button
                     onClick={handleDownloadMemberTemplate}
-                    className="flex items-center px-3 sm:px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100">
+                    className="flex items-center px-3 sm:px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 focus:ring-2 focus:ring-orange-500 focus:outline-none">
                     <Download className="h-4 w-4 mr-2" />
                     Download Template
                   </button>
@@ -330,7 +334,7 @@ export function DataManagement() {
                     <button
                       type="button"
                       onClick={() => setUploadStatus('idle')}
-                      className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
+                      className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 focus:ring-2 focus:ring-orange-500 focus:outline-none"
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       Import Data
@@ -340,7 +344,7 @@ export function DataManagement() {
                     <button
                       type="button"
                       onClick={() => setUploadStatus('idle')}
-                      className="flex items-center px-3 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
+                      className="flex items-center px-3 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 focus:ring-2 focus:ring-orange-500 focus:outline-none"
                     >
                       <Upload className="h-4 w-4" />
                     </button>
@@ -409,20 +413,17 @@ export function DataManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Select Backup File
                     </label>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept=".csv"
-                      className="hidden"
-                    />
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
                       {uploadStatus === 'idle' ? (
                         <>
                           <div
                             className="flex justify-center"
                             onDragOver={handleDragOver}
-                            onDrop={handleDrop}
+                            onDrop={(e) => {
+                              handleDrop(e);
+                              // Force focus to ensure the UI updates
+                              e.currentTarget.focus();
+                            }}
                           >
                             <Upload className="h-8 w-8 text-gray-400 mb-2" />
                           </div>
@@ -432,7 +433,7 @@ export function DataManagement() {
                             <button 
                               type="button"
                               onClick={() => handleBrowseClick(backupFileInputRef)}
-                              className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 inline-flex items-center justify-center w-full sm:w-auto"
+                              className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 inline-flex items-center justify-center w-full sm:w-auto focus:ring-2 focus:ring-orange-500 focus:outline-none"
                             >
                               <Upload className="h-4 w-4 mr-2" />
                               Browse Files
@@ -442,11 +443,14 @@ export function DataManagement() {
                       ) : uploadStatus === 'success' ? (
                         <div className="flex flex-col items-center">
                           <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <p className="text-sm text-green-600 px-2">{uploadMessage}</p>
+                          <div className="text-sm text-green-600 px-2 flex items-center">
+                            <FileCheck className="h-4 w-4 mr-1 flex-shrink-0" />
+                            <p>{uploadMessage}</p>
+                          </div>
                           <button
                             type="button"
                             onClick={() => setUploadStatus('idle')}
-                            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm w-full sm:w-auto"
+                            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm w-full sm:w-auto focus:ring-2 focus:ring-orange-500 focus:outline-none"
                           >
                             Upload another file
                           </button>
@@ -458,7 +462,7 @@ export function DataManagement() {
                           <button
                             type="button"
                             onClick={() => setUploadStatus('idle')}
-                            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm w-full sm:w-auto"
+                            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm w-full sm:w-auto focus:ring-2 focus:ring-orange-500 focus:outline-none"
                           >
                             Try again
                           </button>
@@ -469,7 +473,7 @@ export function DataManagement() {
                   <input
                     ref={backupFileInputRef}
                     type="file"
-                    accept=".sql,.zip"
+                    accept=".sql,.zip,.SQL,.ZIP"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
@@ -483,12 +487,15 @@ export function DataManagement() {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-sm text-gray-500">
-                    <p>Supported file format: CSV</p>
+                  <div className="mt-4 text-sm text-gray-500 space-y-1">
+                    <p>Supported file formats: SQL, ZIP</p>
                     <p>Maximum file size: 5MB</p>
                   </div>
 
-                  <button className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+                  <button 
+                    className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:outline-none"
+                    disabled={uploadStatus !== 'success'}
+                  >
                     <Upload className="h-4 w-4 mr-2" />
                     Restore Backup
                   </button>
@@ -500,6 +507,7 @@ export function DataManagement() {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Backups</h3>
               <div className="text-center py-8">
+                <Database className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">No backups found</p>
                 <p className="text-sm text-gray-400 mt-1">Create your first backup to see it here</p>
               </div>
