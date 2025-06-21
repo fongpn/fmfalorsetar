@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Camera, RotateCcw, Check, Phone, CreditCard, AlertCircle } from 'lucide-react';
+import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Car as IdCard, Banknote, Smartphone } from 'lucide-react';
 // Using a more standard icon for ID Card
 import { VscVscode as IdCard } from 'react-icons/vsc';
 
@@ -312,6 +312,20 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const regFeeAmount = selectedPlan?.has_registration_fee ? registrationFee : 0;
   const totalAmount = (selectedPlan?.price || 0) + regFeeAmount;
 
+  // Calculate membership expiry date
+  const calculateExpiryDate = () => {
+    if (!selectedPlan) return null;
+    
+    const startDate = new Date();
+    const totalMonths = selectedPlan.duration_months + selectedPlan.free_months_on_signup;
+    const expiryDate = new Date(startDate);
+    expiryDate.setMonth(expiryDate.getMonth() + totalMonths);
+    
+    return expiryDate;
+  };
+
+  const expiryDate = calculateExpiryDate();
+
   if (!isOpen) return null;
 
   return (
@@ -432,16 +446,46 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                                 <p className="font-semibold text-lg text-gray-800">RM{plan.price.toFixed(2)}</p>
                             </label>
                         ))}
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
-                    <select value={purchaseData.payment_method} onChange={(e) => setPurchaseData(prev => ({ ...prev, payment_method: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 bg-white">
-                        <option value="CASH">Cash</option>
-                        <option value="CARD">Card</option>
-                        <option value="BANK_TRANSFER">Bank Transfer</option>
-                    </select>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'CASH' }))}
+                      className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                        purchaseData.payment_method === 'CASH'
+                          ? 'border-orange-500 bg-orange-50 text-orange-700'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                      }`}
+                    >
+                      <Banknote className="h-6 w-6 mb-2" />
+                      <span className="text-sm font-medium">Cash</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'CARD' }))}
+                      className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                        purchaseData.payment_method === 'CARD'
+                          ? 'border-orange-500 bg-orange-50 text-orange-700'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                      }`}
+                    >
+                      <CreditCard className="h-6 w-6 mb-2" />
+                      <span className="text-sm font-medium">Card</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'BANK_TRANSFER' }))}
+                      className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                        purchaseData.payment_method === 'BANK_TRANSFER'
+                          ? 'border-orange-500 bg-orange-50 text-orange-700'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                      }`}
+                    >
+                      <Smartphone className="h-6 w-6 mb-2" />
+                      <span className="text-sm font-medium">Transfer</span>
+                    </button>
+                  </div>
                 </div>
 
                 {selectedPlan && (
@@ -452,6 +496,12 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                                 <span className="text-gray-600">{selectedPlan.name}</span>
                                 <span className="font-medium">RM{selectedPlan.price.toFixed(2)}</span>
                             </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Duration: {selectedPlan.duration_months} month{selectedPlan.duration_months !== 1 ? 's' : ''}</span>
+                        {selectedPlan.free_months_on_signup > 0 && (
+                          <span>+ {selectedPlan.free_months_on_signup} free month{selectedPlan.free_months_on_signup !== 1 ? 's' : ''}</span>
+                        )}
+                      </div>
                             {regFeeAmount > 0 && (
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Registration Fee</span>
@@ -464,6 +514,16 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                             </div>
                         </div>
                     </div>
+                      {expiryDate && (
+                        <div className="flex justify-between text-xs text-green-600 font-medium pt-1 border-t border-gray-200">
+                          <span>Membership expires:</span>
+                          <span>{expiryDate.toLocaleDateString('en-GB', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          })}</span>
+                        </div>
+                      )}
                 )}
               
                 <div className="flex justify-between items-center pt-4">
