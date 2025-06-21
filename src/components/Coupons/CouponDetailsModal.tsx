@@ -29,14 +29,15 @@ export function CouponDetailsModal({ isOpen, onClose, coupon, onSuccess }: Coupo
 
   useEffect(() => {
     if (isOpen && coupon) {
+      const ownerName = coupon.member?.full_name || coupon.customer_name || '';
       setFormData({
         code: coupon.code,
         member_id: coupon.member_id || '',
         entries_remaining: coupon.entries_remaining,
         expiry_date: coupon.expiry_date,
-        customer_name: coupon.member?.full_name || coupon.customer_name || ''
+        customer_name: ownerName
       });
-      setSearchQuery(coupon.member?.full_name || coupon.customer_name || '');
+      setSearchQuery(ownerName);
       setError('');
       setSuccess('');
       setIsEditing(false);
@@ -98,6 +99,7 @@ export function CouponDetailsModal({ isOpen, onClose, coupon, onSuccess }: Coupo
         updateData.customer_name = null;
       }
 
+      console.log('Saving coupon with data:', updateData);
       const { error: updateError } = await supabase
         .from('sold_coupons')
         .update(updateData)
@@ -237,11 +239,11 @@ export function CouponDetailsModal({ isOpen, onClose, coupon, onSuccess }: Coupo
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    value={searchQuery}
+                    value={isEditing ? searchQuery : (formData.customer_name || 'No owner assigned')}
                     onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setFormData(prev => ({ ...prev, customer_name: e.target.value }));
                       if (isEditing) {
+                        setSearchQuery(e.target.value);
+                        setFormData(prev => ({ ...prev, customer_name: e.target.value }));
                         setShowMemberSearch(true);
                         searchMembers(e.target.value);
                         if (!e.target.value) {
@@ -275,6 +277,9 @@ export function CouponDetailsModal({ isOpen, onClose, coupon, onSuccess }: Coupo
                     </div>
                   )}
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {isEditing ? 'Search for a member or enter a customer name' : 'Current coupon owner'}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -345,14 +350,15 @@ export function CouponDetailsModal({ isOpen, onClose, coupon, onSuccess }: Coupo
             <button
               onClick={() => {
                 setIsEditing(false);
+                const ownerName = coupon.member?.full_name || coupon.customer_name || '';
                 setFormData({
                   code: coupon.code,
                   member_id: coupon.member_id || '',
                   entries_remaining: coupon.entries_remaining,
                   expiry_date: coupon.expiry_date,
-                  customer_name: coupon.member?.full_name || coupon.customer_name || ''
+                  customer_name: ownerName
                 });
-                setSearchQuery(coupon.member?.full_name || coupon.customer_name || '');
+                setSearchQuery(ownerName);
                 setShowMemberSearch(false);
                 setMembers([]);
               }}
