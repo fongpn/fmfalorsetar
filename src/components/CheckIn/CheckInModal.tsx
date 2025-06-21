@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Ticket, DollarSign, Search, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, User, Ticket, DollarSign, Search, CheckCircle, AlertCircle, CreditCard, Smartphone } from 'lucide-react';
 import { checkinService, CheckInData } from '../../services/checkinService';
 import { memberService } from '../../services/memberService';
 import { useShift } from '../../hooks/useShift';
@@ -516,33 +516,65 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Method
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Payment Method *
                 </label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="CARD">Card</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                </select>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('CASH')}
+                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                      paymentMethod === 'CASH'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <DollarSign className="h-6 w-6 mb-2" />
+                    <span className="text-sm font-medium">Cash</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('CARD')}
+                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                      paymentMethod === 'CARD'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <CreditCard className="h-6 w-6 mb-2" />
+                    <span className="text-sm font-medium">Card</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('BANK_TRANSFER')}
+                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                      paymentMethod === 'BANK_TRANSFER'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <Smartphone className="h-6 w-6 mb-2" />
+                    <span className="text-sm font-medium">Bank Transfer</span>
+                  </button>
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (Optional)
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Customer's Name (Optional)
                 </label>
-                <textarea
+                <input
+                  type="text"
                   value={walkInNotes}
                   onChange={(e) => setWalkInNotes(e.target.value)}
-                  placeholder="Any additional notes..."
-                  rows={3}
+                  placeholder="Enter customer's name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      validateCoupon();
+                      processCheckIn();
                     }
                   }}
                 />
