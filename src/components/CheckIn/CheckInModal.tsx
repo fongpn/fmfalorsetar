@@ -732,9 +732,15 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                   : (activeTab === 'WALK_IN' && walkInType === 'STUDENT') ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'
               }`}
             >
-              {loading ? 'Processing...' : 
-               activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday ? 'Check In Again' : 'Check In'}
-               activeTab === 'WALK_IN' ? `Check In (RM${walkInType === 'STUDENT' ? walkInRates.student.toFixed(2) : walkInRates.adult.toFixed(2)})` :
+              {loading ? (
+                'Processing...'
+              ) : activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday ? (
+                'Check In Again'
+              ) : activeTab === 'WALK_IN' ? (
+                `Check In (RM${walkInType === 'STUDENT' ? walkInRates.student.toFixed(2) : walkInRates.adult.toFixed(2)})`
+              ) : (
+                'Check In'
+              )}
               {!loading && (
                 <kbd className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
                   activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday
