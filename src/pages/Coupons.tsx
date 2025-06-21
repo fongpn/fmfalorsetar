@@ -237,7 +237,7 @@ export function Coupons() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {coupon.member?.full_name || coupon.customer_name || 'Walk-in customer'}
+                              {coupon.member?.full_name || coupon.customer_name || 'No member'}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
