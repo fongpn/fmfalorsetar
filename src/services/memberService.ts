@@ -142,7 +142,7 @@ class MemberService {
     return membersWithStatus;
   }
 
-  private async calculateMemberStatus(member: Member): Promise<MemberWithStatus> {
+  async calculateMemberStatus(member: Member): Promise<MemberWithStatus> {
     // Get current membership
     const { data: membership, error } = await supabase
       .from('memberships')
