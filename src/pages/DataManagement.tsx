@@ -6,7 +6,8 @@ export function DataManagement() {
   const [activeTab, setActiveTab] = useState<'export' | 'import' | 'backup'>('export');
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [uploadMessage, setUploadMessage] = useState('');
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const memberFileInputRef = React.useRef<HTMLInputElement>(null);
+  const backupFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Reset upload status when changing tabs
   React.useEffect(() => {
@@ -57,7 +58,12 @@ export function DataManagement() {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
+    
+    console.log("File selected:", file.name, file.type, file.size);
 
     // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
@@ -79,13 +85,15 @@ export function DataManagement() {
     setUploadMessage(`File "${file.name}" received. In a future update, you'll be able to preview and validate this data before importing.`);
     
     // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (event.target.value) {
+      event.target.value = '';
     }
   };
 
-  const handleBrowseClick = () => {
-    fileInputRef.current?.click();
+  const handleBrowseClick = (inputRef: React.RefObject<HTMLInputElement>) => {
+    if (inputRef.current) {
+      inputRef.current.click();
+    }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -288,17 +296,22 @@ export function DataManagement() {
                     onDrop={handleDrop}
                   >
                     <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">
-                      Drag and drop your CSV file here, or
-                      <button 
-                        onClick={handleBrowseClick}
-                        className="text-orange-600 hover:text-orange-700 underline ml-1 font-medium">
-                        browse to upload
-                      </button>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Drag and drop your CSV file here
                     </p>
+                    <p className="text-sm text-gray-600 mb-0">- or -</p>
+                    <div className="mt-2">
+                      <button 
+                        type="button"
+                        onClick={() => handleBrowseClick(memberFileInputRef)}
+                        className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 inline-flex items-center justify-center">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Browse Files
+                      </button>
+                    </div>
                   </div>
                   <input
-                    ref={fileInputRef}
+                    ref={memberFileInputRef}
                     type="file"
                     accept=".csv"
                     onChange={handleFileUpload}
@@ -406,7 +419,7 @@ export function DataManagement() {
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
                       {uploadStatus === 'idle' ? (
                         <>
-                          <div 
+                          <div
                             className="flex justify-center"
                             onDragOver={handleDragOver}
                             onDrop={handleDrop}
@@ -418,7 +431,7 @@ export function DataManagement() {
                             <p className="mb-0">- or -</p>
                             <button 
                               type="button"
-                              onClick={handleBrowseClick}
+                              onClick={() => handleBrowseClick(backupFileInputRef)}
                               className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 inline-flex items-center justify-center w-full sm:w-auto"
                             >
                               <Upload className="h-4 w-4 mr-2" />
@@ -453,6 +466,13 @@ export function DataManagement() {
                       )}
                     </div>
                   </div>
+                  <input
+                    ref={backupFileInputRef}
+                    type="file"
+                    accept=".sql,.zip"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
 
                   <div className="bg-red-50 border border-red-200 rounded-md p-3">
                     <div className="flex items-center">
