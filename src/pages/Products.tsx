@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { StockManagementModal } from '../components/Inventory/StockManagementModal';
+import { NewProductModal } from '../components/Products/NewProductModal';
 import { posService } from '../services/posService';
 import { Product } from '../lib/supabase';
 import { Search, Plus, Package, AlertTriangle, TrendingUp, Edit, Trash2 } from 'lucide-react';
@@ -12,6 +13,7 @@ export function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showStockModal, setShowStockModal] = useState(false);
+  const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [stockFilter, setStockFilter] = useState<'ALL' | 'LOW' | 'OUT'>('ALL');
 
   useEffect(() => {
@@ -108,7 +110,10 @@ export function Products() {
               <Package className="h-4 w-4 mr-2" />
               Manage Stock
             </button>
-            <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700">
+            <button 
+              onClick={() => setShowNewProductModal(true)}
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </button>
@@ -262,6 +267,16 @@ export function Products() {
           onSuccess={() => {
             fetchProducts();
             setShowStockModal(false);
+          }}
+        />
+
+        {/* New Product Modal */}
+        <NewProductModal
+          isOpen={showNewProductModal}
+          onClose={() => setShowNewProductModal(false)}
+          onSuccess={() => {
+            fetchProducts();
+            setShowNewProductModal(false);
           }}
         />
       </div>
