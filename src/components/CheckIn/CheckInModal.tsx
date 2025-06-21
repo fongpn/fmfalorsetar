@@ -35,15 +35,63 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
   const [walkInNotes, setWalkInNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
 
-  const resetForm = () => {
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      // ESC key - Clear all input values
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        clearAllInputs();
+        return;
+      }
+
+      // Enter key - Check In (only if validation is successful)
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        
+        // Check if we can process check-in based on current tab and validation state
+        const canCheckIn = 
+          (activeTab === 'MEMBER' && memberValidation?.valid) ||
+          (activeTab === 'COUPON' && couponValidation?.valid) ||
+          (activeTab === 'WALK_IN');
+        
+        if (canCheckIn && !loading) {
+          processCheckIn();
+        }
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, activeTab, memberValidation, couponValidation, loading]);
+
+  const clearAllInputs = () => {
+    // Clear member tab inputs
     setMemberIdInput('');
     setMemberValidation(null);
+    setMemberSearchResults([]);
+    setShowSearchResults(false);
+    
+    // Clear coupon tab inputs
     setCouponCodeInput('');
     setCouponValidation(null);
+    
+    // Clear walk-in tab inputs
     setWalkInNotes('');
     setPaymentMethod('CASH');
+    
+    // Clear error messages
     setError('');
     setSuccess('');
+  };
+
+  const resetForm = () => {
+    clearAllInputs();
   };
 
   const handleClose = () => {
@@ -263,6 +311,17 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
         </div>
 
         <div className="p-6">
+          {/* Keyboard Shortcuts Info */}
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-center justify-between text-sm text-blue-700">
+              <span>💡 Keyboard shortcuts:</span>
+              <div className="flex space-x-4">
+                <span><kbd className="px-2 py-1 bg-blue-100 rounded text-xs">Enter</kbd> Check In</span>
+                <span><kbd className="px-2 py-1 bg-blue-100 rounded text-xs">ESC</kbd> Clear All</span>
+              </div>
+            </div>
+          </div>
+
           {/* Status Messages */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
@@ -298,7 +357,12 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                     }}
                     placeholder="Enter Member ID, Phone, or Name"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                    onKeyPress={(e) => e.key === 'Enter' && validateMember()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        validateMember();
+                      }
+                    }}
                   />
                   <button
                     onClick={validateMember}
@@ -487,7 +551,12 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                   onChange={(e) => setWalkInNotes(e.target.value)}
                   placeholder="Any additional notes..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      validateCoupon();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -507,9 +576,12 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                 (activeTab === 'MEMBER' && !memberValidation?.valid) ||
                 (activeTab === 'COUPON' && !couponValidation?.valid)
               }
-              className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 flex items-center"
             >
               {loading ? 'Processing...' : 'Check In'}
+              {!loading && (
+                <kbd className="ml-2 px-1.5 py-0.5 bg-orange-700 rounded text-xs">↵</kbd>
+              )}
             </button>
           </div>
         </div>
