@@ -5,6 +5,8 @@ import { LoginForm } from './components/Auth/LoginForm';
 import { Dashboard } from './pages/Dashboard';
 import { Members } from './pages/Members';
 import { CheckIns } from './pages/CheckIns';
+import { POS } from './pages/POS';
+import { Products } from './pages/Products';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -59,6 +61,22 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <CheckIns />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pos"
+          element={
+            <ProtectedRoute>
+              <POS />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <Products />
             </ProtectedRoute>
           }
         />
