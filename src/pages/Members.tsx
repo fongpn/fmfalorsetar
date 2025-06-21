@@ -126,8 +126,9 @@ export function Members() {
                 {!searchQuery && (
                   <button 
                     onClick={() => setShowNewMemberModal(true)}
-                    className="mt-4 text-orange-600 hover:text-orange-700 underline"
+                    className="mt-6 inline-flex items-center px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-orange-600 to-orange-700 rounded-xl shadow-lg hover:from-orange-700 hover:to-orange-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
                   >
+                    <User className="h-5 w-5 mr-3" />
                     Add your first member
                   </button>
                 )}
