@@ -75,24 +75,18 @@ export function Sidebar() {
     <div className="flex flex-col h-full bg-gray-900 text-white">
       {/* Logo and Title */}
       <div className="p-6 border-b border-gray-700">
-        <div className="flex items-center justify-center">
-          <div className="flex items-center space-x-3">
-            {logoUrl ? (
-              <img 
-                src={logoUrl} 
-                alt="Gym Logo" 
-                className="h-10 w-auto object-contain"
-              />
-            ) : (
-              <div className="p-2 bg-orange-600 rounded-lg">
-                <Dumbbell className="h-6 w-6" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-xl font-bold">{gymName}</h1>
-              <p className="text-sm text-gray-400">Management System</p>
+        <div className="flex justify-center items-center">
+          {logoUrl ? (
+            <img 
+              src={logoUrl} 
+              alt="Gym Logo" 
+              className="h-16 w-auto object-contain"
+            />
+          ) : (
+            <div className="p-3 bg-orange-600 rounded-lg">
+              <Dumbbell className="h-10 w-10" />
             </div>
-          </div>
+          )}
         </div>
       </div>
 
