@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
+import { useAuth } from '../contexts/AuthContext';
 import { NewCouponTemplateModal } from '../components/Coupons/NewCouponTemplateModal';
 import { SellCouponModal } from '../components/Coupons/SellCouponModal';
 import { CouponDetailsModal } from '../components/Coupons/CouponDetailsModal';
@@ -9,6 +10,7 @@ import { supabase } from '../lib/supabase';
 export function Coupons() {
   const [activeTab, setActiveTab] = useState<'templates' | 'sold'>('templates');
   const [searchQuery, setSearchQuery] = useState('');
+  const { profile } = useAuth();
   const [templates, setTemplates] = useState<any[]>([]);
   const [soldCoupons, setSoldCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,13 +137,15 @@ export function Coupons() {
           </div>
           
           <div className="flex space-x-3">
-            <button 
-              onClick={() => setShowNewTemplateModal(true)}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Coupon Type
-            </button>
+            {profile?.role === 'ADMIN' && (
+              <button 
+                onClick={() => setShowNewTemplateModal(true)}
+                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Coupon Type
+              </button>
+            )}
             <button 
               onClick={() => setShowSellCouponModal(true)}
               className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100"

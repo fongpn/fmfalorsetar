@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout/Layout';
+import { useAuth } from '../contexts/AuthContext';
 import { StockManagementModal } from '../components/Inventory/StockManagementModal';
 import { NewProductModal } from '../components/Products/NewProductModal';
 import { EditProductModal } from '../components/Products/EditProductModal.tsx';
@@ -10,6 +11,7 @@ import { Search, Plus, Package, AlertTriangle, TrendingUp, Edit, Trash2 } from '
 export function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -146,13 +148,15 @@ export function Products() {
               <Package className="h-4 w-4 mr-2" />
               Manage Stock
             </button>
-            <button 
-              onClick={() => setShowNewProductModal(true)}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Product
-            </button>
+            {profile?.role === 'ADMIN' && (
+              <button 
+                onClick={() => setShowNewProductModal(true)}
+                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </button>
+            )}
           </div>
         </div>
 

@@ -17,23 +17,31 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
-const navigation = [
+const allNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Check-in', href: '/checkins', icon: UserCheck },
   { name: 'Members', href: '/members', icon: Users },
   { name: 'Coupons', href: '/coupons', icon: FileText },
   { name: 'POS & Inventory', href: '/pos', icon: ShoppingCart },
-  { name: 'Membership Plans', href: '/plans', icon: CreditCard },
+  { name: 'Membership Plans', href: '/plans', icon: CreditCard, adminOnly: true },
   { name: 'Products', href: '/products', icon: Package },
-  { name: 'Staff Management', href: '/staff', icon: Users },
-  { name: 'Shifts', href: '/shifts', icon: Clock },
-  { name: 'Data Management', href: '/data', icon: Upload },
-  { name: 'System Settings', href: '/settings', icon: Settings },
+  { name: 'Staff Management', href: '/staff', icon: Users, adminOnly: true },
+  { name: 'Shifts', href: '/shifts', icon: Clock, adminOnly: true },
+  { name: 'Data Management', href: '/data', icon: Upload, adminOnly: true },
+  { name: 'System Settings', href: '/settings', icon: Settings, adminOnly: true },
 ];
 
 export function Sidebar() {
   const { signOut, profile } = useAuth();
   const navigate = useNavigate();
+
+  // Filter navigation items based on user role
+  const navigation = allNavigation.filter(item => {
+    if (item.adminOnly && profile?.role !== 'ADMIN') {
+      return false;
+    }
+    return true;
+  });
 
   const handleSignOut = async () => {
     try {
