@@ -1,5 +1,6 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom'; 
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -15,6 +16,7 @@ import {
   Dumbbell
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { settingsService } from '../../services/settingsService';
 
 const allNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -33,6 +35,33 @@ const allNavigation = [
 export function Sidebar() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [gymName, setGymName] = useState('FMF Gym');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Load gym name and logo from settings
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+        const settings = await settingsService.getAllSettings();
+        
+        if (settings.gym_name) {
+          setGymName(settings.gym_name);
+        }
+        
+        if (settings.gym_logo_url) {
+          setLogoUrl(settings.gym_logo_url);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSettings();
+  }, []);
 
   // Filter navigation items based on user role
   const navigation = allNavigation.filter(item => {
@@ -46,13 +75,23 @@ export function Sidebar() {
     <div className="flex flex-col h-full bg-gray-900 text-white">
       {/* Logo and Title */}
       <div className="p-6 border-b border-gray-700">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-orange-600 rounded-lg">
-            <Dumbbell className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">FMF Gym</h1>
-            <p className="text-sm text-gray-400">Management System</p>
+        <div className="flex items-center justify-center">
+          <div className="flex items-center space-x-3">
+            {logoUrl ? (
+              <img 
+                src={logoUrl} 
+                alt="Gym Logo" 
+                className="h-10 w-auto object-contain"
+              />
+            ) : (
+              <div className="p-2 bg-orange-600 rounded-lg">
+                <Dumbbell className="h-6 w-6" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-xl font-bold">{gymName}</h1>
+              <p className="text-sm text-gray-400">Management System</p>
+            </div>
           </div>
         </div>
       </div>
