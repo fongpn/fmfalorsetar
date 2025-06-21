@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User, Ticket, DollarSign, Search, CheckCircle, AlertCircle } from 'lucide-react';
 import { checkinService, CheckInData } from '../../services/checkinService';
 import { memberService } from '../../services/memberService';
