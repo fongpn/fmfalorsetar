@@ -613,15 +613,70 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                 (activeTab === 'MEMBER' && !memberValidation?.valid) ||
                 (activeTab === 'COUPON' && !couponValidation?.valid)
               }
-              className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 flex items-center"
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 flex items-center ${
+                activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-orange-600 hover:bg-orange-700'
+              }`}
             >
-              {loading ? 'Processing...' : 'Check In'}
+              {loading ? 'Processing...' : 
+               activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday ? 'Check In Again' : 'Check In'}
               {!loading && (
-                <kbd className="ml-2 px-1.5 py-0.5 bg-orange-700 rounded text-xs">↵</kbd>
+                <kbd className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                  activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday
+                    ? 'bg-amber-700'
+                    : 'bg-orange-700'
+                }`}>↵</kbd>
               )}
             </button>
           </div>
         </div>
+
+        {/* Duplicate Check-in Confirmation Modal */}
+        {showDuplicateConfirm && memberValidation && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 rounded-lg">
+            <div className="bg-white rounded-lg max-w-sm w-full p-6 shadow-xl">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-6 w-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Already Checked In Today
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>{memberValidation.member.full_name}</strong> has already checked in today at{' '}
+                  <strong>{new Date(memberValidation.lastCheckInTime).toLocaleTimeString()}</strong>.
+                </p>
+                <p className="text-sm text-gray-600">
+                  Do you want to process another check-in for this member?
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDuplicateConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDuplicateConfirm(false);
+                    processCheckIn();
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700"
+                >
+                  Check In Again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
