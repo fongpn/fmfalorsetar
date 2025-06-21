@@ -28,7 +28,14 @@ const memberService = {
     ];
   },
   getRegistrationFee: async (): Promise<number> => 50.00,
-  generateMemberId: async (): Promise<string> => `FMF-${Date.now().toString().slice(-6)}`,
+  generateMemberId: async (): Promise<string> => {
+    // Simulate getting the last used ID from database
+    // In real implementation, this would query the database for the highest member_id_string
+    const lastUsedId = localStorage.getItem('lastMemberId') || '0000';
+    const nextId = (parseInt(lastUsedId) + 1).toString().padStart(4, '0');
+    localStorage.setItem('lastMemberId', nextId);
+    return nextId;
+  },
   createMember: async (data: any) => {
     console.log('Creating member:', data);
     await new Promise(res => setTimeout(res, 1000));
@@ -348,66 +355,88 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
           
           {step === 1 && (
             <form onSubmit={handleMemberSubmit} className="space-y-6">
-               {/* Photo Section */}
+              {/* Member ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Member ID (4-digit)</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={memberData.member_id_string} 
+                    onChange={(e) => {
+                      // Only allow 4-digit numbers
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setMemberData(prev => ({ ...prev, member_id_string: value }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" 
+                    placeholder="0001" 
+                    maxLength={4}
+                    required 
+                  />
+                  <Button type="button" variant="outline" onClick={generateMemberId}>
+                    Generate
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Next available ID loaded by default</p>
+              </div>
+
+              {/* Photo Section - Centered */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">Member Photo</label>
-                <div className="flex items-center gap-4">
+                <label className="block text-sm font-medium text-gray-700 text-center">Member Photo</label>
+                <div className="flex flex-col items-center space-y-4">
                   {photoDataUrl ? (
-                      <img src={photoDataUrl} alt="Member" className="w-24 h-24 rounded-full object-cover border-4 border-green-500" />
+                    <img src={photoDataUrl} alt="Member" className="w-32 h-32 rounded-full object-cover border-4 border-green-500 shadow-lg" />
                   ) : (
-                      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center border">
-                          <User className="h-12 w-12 text-gray-400" />
-                      </div>
+                    <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center border-2 border-dashed border-gray-300">
+                      <User className="h-16 w-16 text-gray-400" />
+                    </div>
                   )}
-                  <div className="flex-1 space-y-2">
-                      {cameraMode === 'none' && !photoDataUrl && (
-                          <Button type="button" variant="outline" onClick={initializeCamera}>
-                              <Camera className="h-4 w-4 mr-2" />
-                              Take Photo
-                          </Button>
-                      )}
-                      {photoDataUrl && (
-                           <Button type="button" variant="outline" onClick={retakePhoto}>
-                              <RotateCcw className="h-4 w-4 mr-2" />
-                              Retake
-                          </Button>
-                      )}
+                  
+                  <div className="flex gap-2">
+                    {cameraMode === 'none' && !photoDataUrl && (
+                      <Button type="button" variant="outline" onClick={initializeCamera}>
+                        <Camera className="h-4 w-4 mr-2" />
+                        Take Photo
+                      </Button>
+                    )}
+                    {photoDataUrl && (
+                      <Button type="button" variant="outline" onClick={retakePhoto}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Retake
+                      </Button>
+                    )}
                   </div>
                 </div>
 
                 {cameraMode !== 'none' && cameraMode !== 'captured' && (
-                  <div className="relative w-full aspect-video bg-gray-900 rounded-lg overflow-hidden mt-2">
+                  <div className="relative w-full aspect-video bg-gray-900 rounded-lg overflow-hidden mt-4">
                     <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
                     {cameraMode === 'loading' && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                        <div className="text-center text-white">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white mx-auto mb-2"></div>
+                          <p className="text-sm">Loading camera...</p>
                         </div>
+                      </div>
                     )}
-                     <canvas ref={canvasRef} className="hidden" />
-                     {cameraMode === 'ready' && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                          <Button type="button" onClick={capturePhoto} className="!rounded-full !p-4 h-16 w-16">
-                            <Camera className="h-8 w-8" />
-                          </Button>
-                        </div>
-                     )}
+                    <canvas ref={canvasRef} className="hidden" />
+                    {cameraMode === 'ready' && (
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                        <Button type="button" onClick={capturePhoto} className="!rounded-full !p-4 h-16 w-16 !bg-white !text-orange-600 hover:!bg-gray-100 shadow-lg">
+                          <Camera className="h-8 w-8" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
-                 {cameraError && (
-                    <p className="text-xs text-red-600">{cameraError}</p>
-                 )}
+                {cameraError && (
+                  <div className="text-center">
+                    <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{cameraError}</p>
+                  </div>
+                )}
               </div>
               
               {/* Member Details */}
               <div className="space-y-4">
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Member ID</label>
-                    <div className="flex gap-2">
-                      <input type="text" value={memberData.member_id_string} onChange={(e) => setMemberData(prev => ({ ...prev, member_id_string: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="Auto-generated ID" required />
-                      <Button type="button" variant="outline" onClick={generateMemberId}>Generate</Button>
-                    </div>
-                 </div>
-
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                     <input type="text" value={memberData.full_name} onChange={(e) => setMemberData(prev => ({ ...prev, full_name: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="e.g. John Doe" required />
@@ -415,12 +444,18 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                  
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">IC or Passport Number</label>
-                     <input type="text" value={memberData.ic_passport_number} onChange={(e) => setMemberData(prev => ({ ...prev, ic_passport_number: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="Optional"/>
+                    <div className="relative">
+                      <CarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input type="text" value={memberData.ic_passport_number} onChange={(e) => setMemberData(prev => ({ ...prev, ic_passport_number: e.target.value }))} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="123456-78-9012 or A12345678"/>
+                    </div>
                  </div>
 
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                     <input type="tel" value={memberData.phone_number} onChange={(e) => setMemberData(prev => ({ ...prev, phone_number: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="Optional" />
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input type="tel" value={memberData.phone_number} onChange={(e) => setMemberData(prev => ({ ...prev, phone_number: e.target.value }))} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="+60 12-345 6789" />
+                    </div>
                  </div>
               </div>
 
