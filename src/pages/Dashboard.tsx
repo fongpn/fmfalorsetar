@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout/Layout';
 import { supabase } from '../lib/supabase';
 import { memberService } from '../services/memberService';
-import { checkinService } from '../services/checkinService';
-import { posService } from '../services/posService';
-import { Users, DollarSign, CreditCard, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
+import { checkinService } from '../services/checkinService'; 
+import { posService } from '../services/posService'; 
+import { Users, DollarSign, CreditCard, TrendingUp, Clock, UserCheck, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardStats {
   activeMembers: number;
@@ -17,6 +18,7 @@ interface DashboardStats {
 }
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     activeMembers: 0,
@@ -140,25 +142,6 @@ export function Dashboard() {
     },
   ];
 
-  const alertCards = [
-    {
-      title: 'Expiring Memberships',
-      value: stats.expiringMemberships,
-      description: 'Members expiring in next 7 days',
-      icon: AlertTriangle,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-    },
-    {
-      title: 'Low Stock Products',
-      value: stats.lowStockProducts,
-      description: 'Products below minimum threshold',
-      icon: AlertTriangle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-    },
-  ];
-
   if (loading) {
     return (
       <Layout title="Dashboard" subtitle="Welcome to FMF Gym Management">
@@ -192,34 +175,20 @@ export function Dashboard() {
           ))}
         </div>
 
-        {/* Alerts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {alertCards.map((alert, index) => (
-            <div key={index} className={`rounded-lg p-6 border ${alert.bgColor} border-gray-200`}>
-              <div className="flex items-center">
-                <alert.icon className={`h-6 w-6 ${alert.color}`} />
-                <div className="ml-3">
-                  <h3 className="text-lg font-semibold text-gray-900">{alert.title}</h3>
-                  <p className="text-2xl font-bold mt-1">{alert.value}</p>
-                  <p className="text-sm text-gray-600 mt-1">{alert.description}</p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <button className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                  View Details →
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <button 
-              onClick={() => navigate('/members')}
+              onClick={() => navigate('/checkins')}
               className="flex items-center justify-center px-4 py-3 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors"
+            >
+              <UserCheck className="h-5 w-5 mr-2" />
+              Check In
+            </button>
+            <button 
+              onClick={() => navigate('/members')}
+              className="flex items-center justify-center px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
             >
               <Users className="h-5 w-5 mr-2" />
               New Member
@@ -228,8 +197,8 @@ export function Dashboard() {
               onClick={() => navigate('/pos')}
               className="flex items-center justify-center px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
             >
-              <CreditCard className="h-5 w-5 mr-2" />
-              Process Payment
+              <ShoppingCart className="h-5 w-5 mr-2" />
+              POS
             </button>
             <button 
               onClick={() => navigate('/shifts')}
@@ -237,13 +206,6 @@ export function Dashboard() {
             >
               <Clock className="h-5 w-5 mr-2" />
               Start Shift
-            </button>
-            <button 
-              onClick={() => navigate('/data')}
-              className="flex items-center justify-center px-4 py-3 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
-            >
-              <TrendingUp className="h-5 w-5 mr-2" />
-              View Reports
             </button>
           </div>
         </div>
