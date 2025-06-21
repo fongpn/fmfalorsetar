@@ -15,7 +15,8 @@ export function CheckIns() {
     members: 0,
     coupons: 0,
     walkIns: 0,
-    revenue: 0
+    revenue: 0,
+    students: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
