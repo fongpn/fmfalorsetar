@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Layout } from '../components/Layout/Layout';
-import { Save, Settings as SettingsIcon, DollarSign, Clock, Mail, Shield, CheckCircle, AlertCircle, Camera, RotateCcw, Upload, Image } from 'lucide-react';
+import { Save, Settings as SettingsIcon, DollarSign, Clock, Mail, Shield, CheckCircle, AlertCircle, Camera, RotateCcw, Upload, Image, X } from 'lucide-react';
 import { settingsService, SettingsData } from '../services/settingsService';
 
 export function Settings() {
