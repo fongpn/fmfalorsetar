@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Clock, DollarSign, AlertCircle, CheckCircle, Calculator } from 'lucide-react';
 import { shiftService, EndShiftData } from '../../services/shiftService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Shift } from '../../lib/supabase';
+import { Shift, supabase } from '../../lib/supabase';
 
 interface EndShiftModalProps {
   isOpen: boolean;
