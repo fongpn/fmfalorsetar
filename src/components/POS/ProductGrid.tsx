@@ -91,10 +91,10 @@ export function ProductGrid({ products, onAddToCart, loading }: ProductGridProps
           </div>
           
           <div className="space-y-2">
-            <h3 className="font-medium text-gray-900 line-clamp-2">{product.name}</h3>
+            <h3 className="font-medium text-gray-900 line-clamp-2 text-center">{product.name}</h3>
             
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xl font-bold text-gray-900">
+            <div className="flex items-center justify-center mb-3">
+              <span className="text-xl font-bold text-gray-900 text-center">
                 RM{product.price.toFixed(2)}
               </span>
             </div>
