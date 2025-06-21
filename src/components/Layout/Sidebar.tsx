@@ -99,5 +99,6 @@ export function Sidebar() {
         </button>
       </div>
     </div>
-  );
+    </div>
+
 }
