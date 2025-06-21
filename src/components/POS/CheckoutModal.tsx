@@ -109,16 +109,17 @@ export function CheckoutModal({ isOpen, onClose, onSuccess, items, total }: Chec
 
           {/* Order Summary */}
           <div className="bg-gray-50 p-4 rounded-lg">
-                    <span>RM{item.subtotal.toFixed(2)}</span>
+            <h3 className="font-medium text-gray-900 mb-3">Order Summary</h3>
             <div className="space-y-2">
               {items.map((item) => (
                 <div key={item.product.id} className="flex justify-between text-sm">
                   <span>{item.product.name} × {item.quantity}</span>
-                  <span>RM{total.toFixed(2)}</span>
+                  <span>RM{item.subtotal.toFixed(2)}</span>
                 </div>
               ))}
               <div className="border-t pt-2 flex justify-between font-semibold">
                 <span>Total</span>
+                <span>RM{total.toFixed(2)}</span>
                 <span>${total.toFixed(2)}</span>
               </div>
             </div>
