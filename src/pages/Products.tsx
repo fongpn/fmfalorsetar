@@ -18,6 +18,7 @@ export function Products() {
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [stockFilter, setStockFilter] = useState<'ALL' | 'LOW' | 'OUT'>('ALL');
+  const [showInactive, setShowInactive] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -25,13 +26,15 @@ export function Products() {
 
   useEffect(() => {
     filterProducts();
-  }, [products, searchQuery, stockFilter]);
+  }, [products, searchQuery, stockFilter, showInactive]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await posService.getAllProducts();
+      const data = showInactive 
+        ? await posService.getAllProductsIncludingInactive()
+        : await posService.getAllProducts();
       setProducts(data);
     } catch (err: any) {
       setError(err.message);
@@ -121,6 +124,18 @@ export function Products() {
                 className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="rounded border-gray-300 text-orange-600 focus:ring-orange-500 mr-2"
+              />
+              Show inactive products
+            </label>
           </div>
           
           <div className="flex space-x-3">
@@ -237,6 +252,11 @@ export function Products() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">
                                 RM{product.price.toFixed(2)}
+                                {!product.is_active && (
+                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Inactive
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -260,6 +280,11 @@ export function Products() {
                                 <stockStatus.icon className="h-3 w-3 mr-1" />
                                 {stockStatus.label}
                               </span>
+                              {!product.is_active && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  Inactive
+                                </span>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <div className="flex items-center justify-end space-x-2">

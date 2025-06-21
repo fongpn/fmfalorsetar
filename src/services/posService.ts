@@ -44,6 +44,16 @@ class POSService {
     return data || [];
   }
 
+  async getAllProductsIncludingInactive(): Promise<Product[]> {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+    return data || [];
+  }
+
   async getProductById(id: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from('products')
