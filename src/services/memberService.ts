@@ -37,14 +37,24 @@ class MemberService {
   }
 
   async getRegistrationFee(): Promise<number> {
-    const { data, error } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'registration_fee_default')
-      .single();
-    
-    if (error) throw error;
-    return parseFloat(data.value) || 25.00;
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'registration_fee_default')
+        .single();
+      
+      if (error) {
+        console.warn('Could not fetch registration fee from settings, using default:', error);
+        return 50.00; // Updated default to match your setting
+      }
+      
+      const fee = parseFloat(data.value);
+      return isNaN(fee) ? 50.00 : fee;
+    } catch (error) {
+      console.warn('Error fetching registration fee:', error);
+      return 50.00; // Updated default
+    }
   }
 
   async generateMemberId(): Promise<string> {

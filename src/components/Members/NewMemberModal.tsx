@@ -16,6 +16,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
+  const [registrationFee, setRegistrationFee] = useState<number>(50.00);
   const { activeShift } = useShift();
   const { profile } = useAuth();
 
@@ -44,6 +45,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   useEffect(() => {
     if (isOpen) {
       loadPlans();
+      loadRegistrationFee();
       generateMemberId();
       setStep(1);
       setError('');
@@ -66,6 +68,16 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setPlans(data);
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  const loadRegistrationFee = async () => {
+    try {
+      const fee = await memberService.getRegistrationFee();
+      setRegistrationFee(fee);
+    } catch (err: any) {
+      console.warn('Could not load registration fee:', err);
+      setRegistrationFee(50.00); // Fallback to your preferred default
     }
   };
 
@@ -211,8 +223,8 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   };
 
   const selectedPlan = plans.find(p => p.id === purchaseData.plan_id);
-  const registrationFee = selectedPlan?.has_registration_fee ? 25.00 : 0;
-  const totalAmount = (selectedPlan?.price || 0) + registrationFee;
+  const regFeeAmount = selectedPlan?.has_registration_fee ? registrationFee : 0;
+  const totalAmount = (selectedPlan?.price || 0) + regFeeAmount;
 
   if (!isOpen) return null;
 
@@ -436,13 +448,13 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                           )}
                         </p>
                         {plan.has_registration_fee && (
-                          <p className="text-xs text-amber-600">+ Registration fee</p>
+                          <p className="text-xs text-amber-600">+ RM{registrationFee} registration fee</p>
                         )}
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">RM{plan.price}</p>
                         {plan.has_registration_fee && (
-                          <p className="text-xs text-gray-500">+ RM25 reg fee</p>
+                          <p className="text-xs text-gray-500">+ RM{registrationFee} reg fee</p>
                         )}
                       </div>
                     </div>
@@ -475,10 +487,10 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                     <span>{selectedPlan.name}</span>
                     <span>RM{selectedPlan.price}</span>
                   </div>
-                  {registrationFee > 0 && (
+                  {regFeeAmount > 0 && (
                     <div className="flex justify-between">
                       <span>Registration Fee</span>
-                      <span>RM{registrationFee}</span>
+                      <span>RM{regFeeAmount}</span>
                     </div>
                   )}
                   <div className="border-t pt-1 flex justify-between font-medium">

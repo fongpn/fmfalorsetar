@@ -57,7 +57,7 @@ class SettingsService {
         
         // Financial Settings
         walk_in_rate: parseFloat(settingsMap.walk_in_rate) || 15.00,
-        registration_fee_default: parseFloat(settingsMap.registration_fee_default) || 25.00,
+        registration_fee_default: parseFloat(settingsMap.registration_fee_default) || 50.00,
         grace_period_days: parseInt(settingsMap.grace_period_days) || 7,
         late_fee_amount: parseFloat(settingsMap.late_fee_amount) || 10.00,
         
