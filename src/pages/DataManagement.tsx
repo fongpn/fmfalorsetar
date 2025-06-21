@@ -211,67 +211,22 @@ export function DataManagement() {
                     Select CSV File
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept=".csv"
-                      className="hidden"
-                    />
-                    {uploadStatus === 'idle' ? (
-                      <>
-                        <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600">
-                          Drag and drop your CSV file here, or{' '}
-                          <button 
-                            type="button"
-                            onClick={handleBrowseClick}
-                            className="text-orange-600 hover:text-orange-700 underline"
-                          >
-                            browse to upload
-                          </button>
-                        </p>
-                      </>
-                    ) : uploadStatus === 'success' ? (
-                      <div className="flex flex-col items-center">
-                        <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                        <p className="text-sm text-green-600">{uploadMessage}</p>
-                        <button
-                          type="button"
-                          onClick={() => setUploadStatus('idle')}
-                          className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
-                        >
-                          Upload another file
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                        <p className="text-sm text-red-600">{uploadMessage}</p>
-                        <button
-                          type="button"
-                          onClick={() => setUploadStatus('idle')}
-                          className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
-                        >
-                          Try again
-                        </button>
-                      </div>
-                    )}
+                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">
+                      Drag and drop your CSV file here, or{' '}
+                      <button className="text-orange-600 hover:text-orange-700 underline">
+                        browse to upload
+                      </button>
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-4">
-                  <button 
-                    onClick={handleDownloadMemberTemplate}
-                    className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
-                  >
+                  <button className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100">
                     <Download className="h-4 w-4 mr-2" />
                     Download Template
                   </button>
-                  <button 
-                    className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700"
-                    disabled={uploadStatus !== 'success'}
-                  >
+                  <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700">
                     <Upload className="h-4 w-4 mr-2" />
                     Import Data
                   </button>
@@ -315,6 +270,52 @@ export function DataManagement() {
                       <span className="ml-2 text-sm text-gray-700">Include system settings</span>
                     </label>
                   </div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".csv"
+                    className="hidden"
+                  />
+                  {uploadStatus === 'idle' ? (
+                    <>
+                      <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">
+                        Drag and drop your CSV file here, or{' '}
+                        <button 
+                          type="button"
+                          onClick={handleBrowseClick}
+                          className="text-orange-600 hover:text-orange-700 underline"
+                        >
+                          browse to upload
+                        </button>
+                      </p>
+                    </>
+                  ) : uploadStatus === 'success' ? (
+                    <div className="flex flex-col items-center">
+                      <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                      <p className="text-sm text-green-600">{uploadMessage}</p>
+                      <button
+                        type="button"
+                        onClick={() => setUploadStatus('idle')}
+                        className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
+                      >
+                        Upload another file
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                      <p className="text-sm text-red-600">{uploadMessage}</p>
+                      <button
+                        type="button"
+                        onClick={() => setUploadStatus('idle')}
+                        className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -353,6 +354,13 @@ export function DataManagement() {
                   <button className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
                     <Upload className="h-4 w-4 mr-2" />
                     Restore Backup
+                  </button>
+                  <button
+                    onClick={handleDownloadMemberTemplate}
+                    className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
+                    disabled={uploadStatus !== 'success'}
+                  >
+                    Download Template
                   </button>
                 </div>
               </div>
