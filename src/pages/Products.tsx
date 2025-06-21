@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { StockManagementModal } from '../components/Inventory/StockManagementModal';
 import { NewProductModal } from '../components/Products/NewProductModal';
+import { EditProductModal } from '../components/Products/EditProductModal';
 import { posService } from '../services/posService';
 import { Product } from '../lib/supabase';
 import { Search, Plus, Package, AlertTriangle, TrendingUp, Edit, Trash2 } from 'lucide-react';
@@ -14,6 +15,8 @@ export function Products() {
   const [error, setError] = useState<string | null>(null);
   const [showStockModal, setShowStockModal] = useState(false);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
+  const [showEditProductModal, setShowEditProductModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [stockFilter, setStockFilter] = useState<'ALL' | 'LOW' | 'OUT'>('ALL');
 
   useEffect(() => {
@@ -80,6 +83,24 @@ export function Products() {
       LOW: products.filter(p => p.current_stock > 0 && p.current_stock <= 10).length,
       OUT: products.filter(p => p.current_stock === 0).length,
     };
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setShowEditProductModal(true);
+  };
+
+  const handleDeleteProduct = async (product: Product) => {
+    if (!confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await posService.deleteProduct(product.id);
+      fetchProducts();
+    } catch (err: any) {
+      setError(`Failed to delete product: ${err.message}`);
+    }
   };
 
   const filterCounts = getFilterCounts();
@@ -210,9 +231,6 @@ export function Products() {
                                   <div className="text-sm font-medium text-gray-900">
                                     {product.name}
                                   </div>
-                                  <div className="text-sm text-gray-500">
-                                    ID: {product.id.slice(0, 8)}...
-                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -245,10 +263,18 @@ export function Products() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <div className="flex items-center justify-end space-x-2">
-                                <button className="text-orange-600 hover:text-orange-900">
+                                <button 
+                                  onClick={() => handleEditProduct(product)}
+                                  className="text-orange-600 hover:text-orange-900"
+                                  title="Edit product"
+                                >
                                   <Edit className="h-4 w-4" />
                                 </button>
-                                <button className="text-red-600 hover:text-red-900">
+                                <button 
+                                  onClick={() => handleDeleteProduct(product)}
+                                  className="text-red-600 hover:text-red-900"
+                                  title="Delete product"
+                                >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
@@ -289,6 +315,21 @@ export function Products() {
             fetchProducts();
             setShowNewProductModal(false);
           }}
+        />
+
+        {/* Edit Product Modal */}
+        <EditProductModal
+          isOpen={showEditProductModal}
+          onClose={() => {
+            setShowEditProductModal(false);
+            setSelectedProduct(null);
+          }}
+          onSuccess={() => {
+            fetchProducts();
+            setShowEditProductModal(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
         />
       </div>
     </Layout>
