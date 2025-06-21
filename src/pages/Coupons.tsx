@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { NewCouponTemplateModal } from '../components/Coupons/NewCouponTemplateModal';
 import { SellCouponModal } from '../components/Coupons/SellCouponModal';
-import { Plus, Search, Ticket, Calendar, Users, DollarSign, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Ticket, Calendar, Users, DollarSign, Trash2, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export function Coupons() {
