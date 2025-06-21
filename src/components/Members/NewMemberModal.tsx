@@ -137,15 +137,15 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setStream(mediaStream);
       
       if (videoRef.current) {
-      // Wait for next tick to ensure video element is rendered
-      setTimeout(() => {
-        videoRef.current.srcObject = mediaStream;
-        
+        // Wait for next tick to ensure video element is rendered
+        setTimeout(() => {
+          videoRef.current.srcObject = mediaStream;
+          
           // Set up event listeners
           const video = videoRef.current;
           
           const handleLoadedMetadata = () => {
-          console.log('Video metadata loaded');
+            console.log('Video metadata loaded');
             // Try to play the video
             video.play().then(() => {
               console.log('Video playing successfully');
@@ -154,12 +154,12 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
               console.error('Error playing video:', playError);
               setCameraError('Failed to start video playback');
             });
-        };
+          };
         
           const handleCanPlay = () => {
-          console.log('Video can play');
-          setCameraReady(true);
-        };
+            console.log('Video can play');
+            setCameraReady(true);
+          };
           
           const handleError = (e: any) => {
             console.error('Video error:', e);
@@ -173,8 +173,8 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
           
           // Store cleanup function
           video.dataset.cleanupAdded = 'true';
+        }, 100);
       }
-      }, 100);
       
     } catch (err: any) {
       console.error('Camera access error:', err);
