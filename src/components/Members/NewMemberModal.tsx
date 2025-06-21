@@ -17,6 +17,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const [error, setError] = useState('');
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [registrationFee, setRegistrationFee] = useState<number>(50.00);
+  const [cameraError, setCameraError] = useState('');
   const { activeShift } = useShift();
   const { profile } = useAuth();
 
@@ -24,6 +25,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const [showCamera, setShowCamera] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -50,6 +52,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setStep(1);
       setError('');
       setCapturedPhoto(null);
+      setCameraError('');
     }
   }, [isOpen]);
 
@@ -57,6 +60,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     // Cleanup camera stream when component unmounts or modal closes
     return () => {
       if (stream) {
+        console.log('Cleaning up camera stream');
         stream.getTracks().forEach(track => track.stop());
       }
     };
@@ -92,21 +96,65 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
 
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: 640, 
-          height: 480,
-          facingMode: 'user'
-        } 
-      });
+      setError('');
+      setCameraError('');
+      setCameraReady(false);
+      
+      // Stop any existing stream first
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access is not supported in this browser');
+      }
+
+      console.log('Requesting camera access...');
+      
+      // Request camera with multiple fallback options
+      let mediaStream;
+      try {
+        // Try with ideal constraints first
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640, max: 1280 },
+            height: { ideal: 480, max: 720 },
+            facingMode: 'user'
+          },
+          audio: false
+        });
+      } catch (err) {
+        console.log('Ideal constraints failed, trying basic constraints:', err);
+        // Fallback to basic constraints
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
+      console.log('Camera access granted, setting up video element...');
       setStream(mediaStream);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded');
+          setCameraReady(true);
+        };
+        
+        videoRef.current.oncanplay = () => {
+          console.log('Video can play');
+          setCameraReady(true);
+        };
       }
+      
       setShowCamera(true);
-      setError('');
     } catch (err: any) {
-      setError('Unable to access camera. Please check permissions.');
+      console.error('Camera access error:', err);
+      setCameraError(`Camera access failed: ${err.message}. Please check permissions and try again.`);
     }
   };
 
@@ -114,6 +162,8 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
+      setCameraReady(false);
+      setCameraError('');
     }
     setShowCamera(false);
   };
@@ -122,6 +172,12 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     if (videoRef.current && canvasRef.current) {
       const canvas = canvasRef.current;
       const video = videoRef.current;
+      
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        setCameraError('Video not ready. Please wait a moment and try again.');
+        return;
+      }
+      
       const context = canvas.getContext('2d');
       
       // Set canvas dimensions to match video display size
@@ -130,6 +186,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       
       if (context) {
         // Draw the video frame to canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedPhoto(photoDataUrl);
@@ -142,6 +199,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const retakePhoto = () => {
     setCapturedPhoto(null);
     setMemberData(prev => ({ ...prev, photo_url: '' }));
+    setCameraError('');
     startCamera();
   };
 
@@ -214,6 +272,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     });
     setCapturedPhoto(null);
     stopCamera();
+    setCameraError('');
     setStep(1);
   };
 
@@ -247,6 +306,13 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
           </div>
         )}
 
+        {cameraError && (
+          <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-sm text-amber-600">{cameraError}</p>
+            <button onClick={() => setCameraError('')} className="text-xs text-amber-700 underline mt-1">Dismiss</button>
+          </div>
+        )}
+
         {step === 1 && (
           <form onSubmit={handleMemberSubmit} className="p-6 space-y-4">
             <div className="text-center mb-6">
@@ -269,22 +335,42 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                   </div>
                 ) : showCamera ? (
                   <div className="relative">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-64 h-48 rounded-lg mx-auto bg-gray-200 object-cover"
-                    />
+                    <div className="relative w-64 h-48 mx-auto bg-gray-200 rounded-lg overflow-hidden">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                        style={{ transform: 'scaleX(-1)' }} // Mirror the video for better UX
+                      />
+                      {!cameraReady && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
+                            <p className="text-sm text-gray-600">Loading camera...</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <canvas ref={canvasRef} className="hidden" />
                     <div className="flex justify-center space-x-3 mt-3">
                       <button
                         type="button"
                         onClick={capturePhoto}
+                        disabled={!cameraReady}
                         className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
                       >
                         <Check className="h-4 w-4 mr-1" />
                         Capture
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { stopCamera(); startCamera(); }}
+                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Retry
                       </button>
                       <button
                         type="button"
