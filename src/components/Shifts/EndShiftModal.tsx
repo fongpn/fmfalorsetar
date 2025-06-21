@@ -222,7 +222,6 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
               Math.abs(discrepancy) < 0.01 
                 ? 'bg-green-50 border border-green-200' 
                 : 'bg-amber-50 border border-amber-200'
-            }`}>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Cash Discrepancy:</span>
                 <span className={`font-bold ${
@@ -230,7 +229,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
                     ? 'text-green-700' 
                     : 'text-amber-700'
                 }`}>
-                  {discrepancy === 0 ? 'Perfect!' : `${discrepancy > 0 ? '+' : ''}RM${discrepancy.toFixed(2)}`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
                 </span>
               </div>
               {Math.abs(discrepancy) >= 0.01 && (
