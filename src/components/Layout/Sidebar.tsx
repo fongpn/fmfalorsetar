@@ -26,7 +26,7 @@ const allNavigation = [
   { name: 'Membership Plans', href: '/plans', icon: CreditCard, adminOnly: true },
   { name: 'Products', href: '/products', icon: Package },
   { name: 'Staff Management', href: '/staff', icon: Users, adminOnly: true },
-  { name: 'Shifts', href: '/shifts', icon: Clock, adminOnly: true },
+  { name: 'Shifts', href: '/shifts', icon: Clock },
   { name: 'Data Management', href: '/data', icon: Upload, adminOnly: true },
   { name: 'System Settings', href: '/settings', icon: Settings, adminOnly: true },
 ];
