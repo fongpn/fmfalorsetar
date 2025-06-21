@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Car as IdCard, Banknote, Smartphone, QrCode, AlertCircle } from 'lucide-react';
+import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Car as CarIcon, Banknote, Smartphone, QrCode, AlertCircle } from 'lucide-react';
 // Using a more standard icon for ID Card
 import { VscVscode as IdCard } from 'react-icons/vsc';
 
