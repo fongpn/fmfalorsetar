@@ -10,7 +10,7 @@ export interface MemberWithStatus extends Member {
 export interface NewMemberData {
   member_id_string: string;
   full_name: string;
-  email?: string;
+  ic_passport_number?: string;
   phone_number?: string;
   photo_url?: string;
 }

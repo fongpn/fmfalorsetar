@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, CreditCard } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, User, Mail, Phone, CreditCard, Camera, RotateCcw, Check, IdCard } from 'lucide-react';
 import { memberService } from '../../services/memberService';
 import { useShift } from '../../hooks/useShift';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,11 +19,18 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const { activeShift } = useShift();
   const { profile } = useAuth();
 
+  // Camera states
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   // Member data
   const [memberData, setMemberData] = useState({
     member_id_string: '',
     full_name: '',
-    email: '',
+    ic_passport_number: '',
     phone_number: '',
     photo_url: ''
   });
@@ -40,8 +47,18 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       generateMemberId();
       setStep(1);
       setError('');
+      setCapturedPhoto(null);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    // Cleanup camera stream when component unmounts or modal closes
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
 
   const loadPlans = async () => {
     try {
@@ -59,6 +76,59 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     } catch (err: any) {
       setError(err.message);
     }
+  };
+
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: 640, 
+          height: 480,
+          facingMode: 'user'
+        } 
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setShowCamera(true);
+      setError('');
+    } catch (err: any) {
+      setError('Unable to access camera. Please check permissions.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const context = canvas.getContext('2d');
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      if (context) {
+        context.drawImage(video, 0, 0);
+        const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setCapturedPhoto(photoDataUrl);
+        setMemberData(prev => ({ ...prev, photo_url: photoDataUrl }));
+        stopCamera();
+      }
+    }
+  };
+
+  const retakePhoto = () => {
+    setCapturedPhoto(null);
+    setMemberData(prev => ({ ...prev, photo_url: '' }));
+    startCamera();
   };
 
   const handleMemberSubmit = (e: React.FormEvent) => {
@@ -120,7 +190,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     setMemberData({
       member_id_string: '',
       full_name: '',
-      email: '',
+      ic_passport_number: '',
       phone_number: '',
       photo_url: ''
     });
@@ -128,7 +198,14 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       plan_id: '',
       payment_method: 'CASH'
     });
+    setCapturedPhoto(null);
+    stopCamera();
     setStep(1);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
   const selectedPlan = plans.find(p => p.id === purchaseData.plan_id);
@@ -143,7 +220,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">New Member Registration</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-600"
           >
             <X className="h-6 w-6" />
@@ -159,9 +236,67 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
         {step === 1 && (
           <form onSubmit={handleMemberSubmit} className="p-6 space-y-4">
             <div className="text-center mb-6">
-              <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <User className="h-10 w-10 text-gray-400" />
+              {/* Photo Section */}
+              <div className="relative mb-4">
+                {capturedPhoto ? (
+                  <div className="relative">
+                    <img 
+                      src={capturedPhoto} 
+                      alt="Member photo"
+                      className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-orange-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={retakePhoto}
+                      className="absolute -bottom-1 -right-1 p-1 bg-orange-600 text-white rounded-full hover:bg-orange-700 transform translate-x-8"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : showCamera ? (
+                  <div className="relative">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      className="w-48 h-36 rounded-lg mx-auto bg-gray-200"
+                    />
+                    <canvas ref={canvasRef} className="hidden" />
+                    <div className="flex justify-center space-x-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopCamera}
+                        className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <User className="h-10 w-10 text-gray-400" />
+                  </div>
+                )}
+                
+                {!capturedPhoto && !showCamera && (
+                  <button
+                    type="button"
+                    onClick={startCamera}
+                    className="flex items-center justify-center mx-auto px-3 py-1 text-sm text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100"
+                  >
+                    <Camera className="h-4 w-4 mr-1" />
+                    Take Photo
+                  </button>
+                )}
               </div>
+
               <h3 className="text-lg font-medium text-gray-900">Member Information</h3>
               <p className="text-sm text-gray-500">Step 1 of 2</p>
             </div>
@@ -174,10 +309,12 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                 type="text"
                 value={memberData.member_id_string}
                 onChange={(e) => setMemberData(prev => ({ ...prev, member_id_string: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                placeholder="FMF-001"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 bg-gray-50"
+                placeholder="Auto-generated"
                 required
+                readOnly
               />
+              <p className="text-xs text-gray-500 mt-1">Auto-generated from database</p>
             </div>
 
             <div>
@@ -196,16 +333,16 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                IC or Passport Number
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
-                  type="email"
-                  value={memberData.email}
-                  onChange={(e) => setMemberData(prev => ({ ...prev, email: e.target.value }))}
+                  type="text"
+                  value={memberData.ic_passport_number}
+                  onChange={(e) => setMemberData(prev => ({ ...prev, ic_passport_number: e.target.value }))}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                  placeholder="email@example.com"
+                  placeholder="123456-78-9012 or A12345678"
                 />
               </div>
             </div>
@@ -221,7 +358,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                   value={memberData.phone_number}
                   onChange={(e) => setMemberData(prev => ({ ...prev, phone_number: e.target.value }))}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                  placeholder="+1 (555) 123-4567"
+                  placeholder="Enter phone number"
                 />
               </div>
             </div>
@@ -229,7 +366,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
             <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Cancel

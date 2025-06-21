@@ -34,7 +34,7 @@ export interface Member {
   id: string;
   member_id_string: string;
   full_name: string;
-  email?: string;
+  ic_passport_number?: string;
   phone_number?: string;
   photo_url?: string;
   join_date: string;
