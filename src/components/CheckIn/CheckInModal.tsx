@@ -36,6 +36,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
   const [walkInType, setWalkInType] = useState<'ADULT' | 'STUDENT'>('ADULT');
   const [walkInNotes, setWalkInNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [walkInRates, setWalkInRates] = useState({ adult: 15.00, student: 8.00 });
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -71,6 +72,37 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, activeTab, memberValidation, couponValidation, loading]);
+
+  // Load walk-in rates when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadWalkInRates();
+    }
+  }, [isOpen]);
+
+  const loadWalkInRates = async () => {
+    try {
+      const { data: adultRateData } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'walk_in_rate')
+        .single();
+
+      const { data: studentRateData } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'walk_in_student_rate')
+        .single();
+
+      setWalkInRates({
+        adult: parseFloat(adultRateData?.value || '15.00'),
+        student: parseFloat(studentRateData?.value || '8.00')
+      });
+    } catch (error) {
+      console.warn('Failed to load walk-in rates:', error);
+      // Keep default values
+    }
+  };
 
   const clearAllInputs = () => {
     // Clear member tab inputs
@@ -545,7 +577,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                   >
                     <User className="h-6 w-6 mb-2" />
                     <span className="text-sm font-medium">Adult</span>
-                    <span className="text-xs text-gray-500">Regular Rate</span>
+                    <span className="text-xs text-gray-500">RM{walkInRates.adult.toFixed(2)}</span>
                   </button>
                   
                   <button
@@ -559,19 +591,39 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                   >
                     <User className="h-6 w-6 mb-2" />
                     <span className="text-sm font-medium">Student</span>
-                    <span className="text-xs text-gray-500">Discounted Rate</span>
+                    <span className="text-xs text-gray-500">RM{walkInRates.student.toFixed(2)}</span>
                   </button>
                 </div>
               </div>
 
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className={`p-4 border rounded-lg ${
+                walkInType === 'STUDENT' 
+                  ? 'bg-blue-50 border-blue-200' 
+                  : 'bg-orange-50 border-orange-200'
+              }`}>
                 <h4 className="font-medium text-blue-900 mb-2">
-                  {walkInType === 'STUDENT' ? 'Student Walk-in Rate' : 'Walk-in Rate'}
+                  {walkInType === 'STUDENT' ? 'Student Walk-in' : 'Adult Walk-in'}
                 </h4>
-                <p className="text-sm text-blue-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-lg font-bold ${
+                    walkInType === 'STUDENT' ? 'text-blue-700' : 'text-orange-700'
+                  }`}>
+                    RM{walkInType === 'STUDENT' ? walkInRates.student.toFixed(2) : walkInRates.adult.toFixed(2)}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    walkInType === 'STUDENT' 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {walkInType === 'STUDENT' ? 'Discounted' : 'Regular Rate'}
+                  </span>
+                </div>
+                <p className={`text-sm ${
+                  walkInType === 'STUDENT' ? 'text-blue-700' : 'text-orange-700'
+                }`}>
                   {walkInType === 'STUDENT' 
-                    ? 'Discounted daily gym access fee for students according to system settings.'
-                    : 'Daily gym access fee will be charged according to system settings.'
+                    ? 'Discounted daily gym access fee for students.'
+                    : 'Standard daily gym access fee.'
                   }
                 </p>
               </div>
@@ -665,6 +717,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
             >
               {loading ? 'Processing...' : 
                activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday ? 'Check In Again' : 'Check In'}
+               activeTab === 'WALK_IN' ? `Check In (RM${walkInType === 'STUDENT' ? walkInRates.student.toFixed(2) : walkInRates.adult.toFixed(2)})` :
               {!loading && (
                 <kbd className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
                   activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday

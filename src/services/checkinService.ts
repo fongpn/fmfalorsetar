@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { memberService, MemberWithStatus } from './memberService';
 
 export interface MemberValidationResult {
