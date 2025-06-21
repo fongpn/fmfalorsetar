@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Banknote, Smartphone } from 'lucide-react';
+import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Car as IdCard, Banknote, Smartphone, QrCode, AlertCircle } from 'lucide-react';
 // Using a more standard icon for ID Card
 import { VscVscode as IdCard } from 'react-icons/vsc';
 
@@ -463,15 +463,15 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                     
                     <button
                       type="button"
-                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'CARD' }))}
+                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'QR' }))}
                       className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                        purchaseData.payment_method === 'CARD'
+                        purchaseData.payment_method === 'QR'
                           ? 'border-orange-500 bg-orange-50 text-orange-700'
                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
                       }`}
                     >
-                      <CreditCard className="h-6 w-6 mb-2" />
-                      <span className="text-sm font-medium">Card</span>
+                      <QrCode className="h-6 w-6 mb-2" />
+                      <span className="text-sm font-medium">QR</span>
                     </button>
                     
                     <button
@@ -484,7 +484,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                       }`}
                     >
                       <Smartphone className="h-6 w-6 mb-2" />
-                      <span className="text-sm font-medium">Transfer</span>
+                      <span className="text-sm font-medium">Bank Transfer</span>
                     </button>
                   </div>
                 </div>
