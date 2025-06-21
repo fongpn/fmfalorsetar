@@ -119,28 +119,24 @@ export function Dashboard() {
       value: stats.activeMembers.toLocaleString(),
       icon: Users,
       color: 'bg-orange-500',
-      change: '+12 this month',
     },
     {
       title: "Today's Revenue",
       value: `RM${stats.todayRevenue.toFixed(2)}`,
       icon: DollarSign,
       color: 'bg-green-500',
-      change: '+8.2% from yesterday',
     },
     {
       title: 'Active Shifts',
       value: stats.activeShifts.toString(),
       icon: Clock,
       color: 'bg-orange-500',
-      change: 'Current shift running',
     },
     {
       title: "Today's Check-ins",
       value: stats.todayCheckIns.toString(),
       icon: TrendingUp,
       color: 'bg-purple-500',
-      change: '+15% from last week',
     },
   ];
 
@@ -247,9 +243,6 @@ export function Dashboard() {
               className="flex items-center justify-center px-4 py-3 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
             >
               <TrendingUp className="h-5 w-5 mr-2" />
-              View Reports
-            </button>
-          </div>
         </div>
 
       </div>
