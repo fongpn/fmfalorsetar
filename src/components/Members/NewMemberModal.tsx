@@ -21,14 +21,13 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const { activeShift } = useShift();
   const { profile } = useAuth();
 
-  // Camera states
-  const [showCamera, setShowCamera] = useState(false);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cameraTimeout, setCameraTimeout] = useState<NodeJS.Timeout | null>(null);
+  // Simplified camera states
+  const [cameraMode, setCameraMode] = useState<'none' | 'loading' | 'ready' | 'captured' | 'error'>('none');
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Member data
   const [memberData, setMemberData] = useState({
@@ -52,23 +51,147 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       generateMemberId();
       setStep(1);
       setError('');
-      setCapturedPhoto(null);
+      setPhotoDataUrl(null);
+      setCameraMode('none');
       setCameraError('');
     }
   }, [isOpen]);
 
   useEffect(() => {
-    // Cleanup camera stream when component unmounts or modal closes
+    // Cleanup on unmount
     return () => {
-      if (stream) {
-        console.log('Cleaning up camera stream');
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (cameraTimeout) {
-        clearTimeout(cameraTimeout);
-      }
+      cleanupCamera();
     };
-  }, [stream, cameraTimeout]);
+  }, []);
+
+  const cleanupCamera = () => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => {
+        track.stop();
+      });
+      setMediaStream(null);
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraMode('none');
+    setCameraError('');
+  };
+
+  const initializeCamera = async () => {
+    try {
+      setCameraMode('loading');
+      setCameraError('');
+      
+      // Clean up any existing stream
+      cleanupCamera();
+      setCameraMode('loading');
+
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera not supported in this browser');
+      }
+
+      // Set timeout for camera initialization
+      timeoutRef.current = setTimeout(() => {
+        setCameraError('Camera is taking too long to load. You can skip the photo.');
+        setCameraMode('error');
+      }, 10000);
+
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        },
+        audio: false
+      });
+
+      setMediaStream(stream);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        
+        // Wait for video to load
+        const video = videoRef.current;
+        
+        const handleLoadedData = () => {
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+          }
+          setCameraMode('ready');
+          video.removeEventListener('loadeddata', handleLoadedData);
+        };
+
+        video.addEventListener('loadeddata', handleLoadedData);
+        
+        // Fallback timeout
+        setTimeout(() => {
+          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+            handleLoadedData();
+          }
+        }, 2000);
+      }
+
+    } catch (error: any) {
+      console.error('Camera initialization failed:', error);
+      setCameraError(`Camera failed: ${error.message}`);
+      setCameraMode('error');
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current || cameraMode !== 'ready') {
+      setCameraError('Camera not ready for capture');
+      return;
+    }
+
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+
+      if (!context) {
+        throw new Error('Could not get canvas context');
+      }
+
+      // Set canvas size
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+
+      // Draw video frame to canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Get image data
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      setPhotoDataUrl(dataUrl);
+      setMemberData(prev => ({ ...prev, photo_url: dataUrl }));
+      setCameraMode('captured');
+      
+      // Clean up camera
+      cleanupCamera();
+      
+    } catch (error: any) {
+      console.error('Photo capture failed:', error);
+      setCameraError(`Capture failed: ${error.message}`);
+    }
+  };
+
+  const retakePhoto = () => {
+    setPhotoDataUrl(null);
+    setMemberData(prev => ({ ...prev, photo_url: '' }));
+    initializeCamera();
+  };
 
   const loadPlans = async () => {
     try {
@@ -96,131 +219,6 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     } catch (err: any) {
       setError(err.message);
     }
-  };
-
-  const startCamera = async () => {
-    try {
-      setError('');
-      setCameraError('');
-      setCameraReady(false);
-      
-      // Stop any existing stream first
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-
-      // Check if getUserMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access is not supported in this browser');
-      }
-
-      console.log('Requesting camera access...');
-      
-      // Request camera with multiple fallback options
-      let mediaStream;
-      try {
-        // Try with ideal constraints first
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 640, max: 1280 },
-            height: { ideal: 480, max: 720 },
-            facingMode: 'user'
-          },
-          audio: false
-        });
-      } catch (err) {
-        console.log('Ideal constraints failed, trying basic constraints:', err);
-        // Fallback to basic constraints
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
-      }
-
-      console.log('Camera access granted, setting up video element...');
-      setStream(mediaStream);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        
-        // Set up timeout for video loading
-        const timeoutId = setTimeout(() => {
-          setCameraError('Camera is taking too long to load. You can skip the photo and continue with registration.');
-          setCameraReady(false);
-        }, 8000);
-        
-        setCameraTimeout(timeoutId);
-        
-        // Wait for video to be ready
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded');
-          if (cameraTimeout) {
-            clearTimeout(cameraTimeout);
-            setCameraTimeout(null);
-          }
-          setCameraReady(true);
-        };
-        
-        videoRef.current.oncanplay = () => {
-          console.log('Video can play');
-          if (cameraTimeout) {
-            clearTimeout(cameraTimeout);
-            setCameraTimeout(null);
-          }
-          setCameraReady(true);
-        };
-      }
-      
-      setShowCamera(true);
-    } catch (err: any) {
-      console.error('Camera access error:', err);
-      setCameraError(`Camera access failed: ${err.message}. You can skip the photo and continue with registration.`);
-    }
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-      setCameraReady(false);
-      setCameraError('');
-    }
-    setShowCamera(false);
-  };
-
-  const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        setCameraError('Video not ready. Please wait a moment and try again.');
-        return;
-      }
-      
-      const context = canvas.getContext('2d');
-      
-      // Set canvas dimensions to match video display size
-      canvas.width = 640;
-      canvas.height = 480;
-      
-      if (context) {
-        // Draw the video frame to canvas
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedPhoto(photoDataUrl);
-        setMemberData(prev => ({ ...prev, photo_url: photoDataUrl }));
-        stopCamera();
-      }
-    }
-  };
-
-  const retakePhoto = () => {
-    setCapturedPhoto(null);
-    setMemberData(prev => ({ ...prev, photo_url: '' }));
-    setCameraError('');
-    startCamera();
   };
 
   const handleMemberSubmit = (e: React.FormEvent) => {
@@ -290,8 +288,8 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       plan_id: '',
       payment_method: 'CASH'
     });
-    setCapturedPhoto(null);
-    stopCamera();
+    setPhotoDataUrl(null);
+    cleanupCamera();
     setCameraError('');
     setStep(1);
   };
@@ -338,10 +336,10 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
             <div className="text-center mb-6">
               {/* Photo Section */}
               <div className="relative mb-4">
-                {capturedPhoto ? (
+                {photoDataUrl ? (
                   <div className="relative">
                     <img 
-                      src={capturedPhoto} 
+                      src={photoDataUrl} 
                       alt="Member photo"
                       className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-orange-200"
                     />
@@ -353,7 +351,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                       <RotateCcw className="h-4 w-4" />
                     </button>
                   </div>
-                ) : showCamera ? (
+                ) : cameraMode === 'loading' || cameraMode === 'ready' ? (
                   <div className="relative">
                     <div className="relative w-64 h-48 mx-auto bg-gray-200 rounded-lg overflow-hidden">
                       <video
@@ -364,7 +362,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                         className="w-full h-full object-cover"
                         style={{ transform: 'scaleX(-1)' }} // Mirror the video for better UX
                       />
-                      {!cameraReady && (
+                      {cameraMode === 'loading' && (
                         <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
@@ -379,7 +377,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                       <button
                         type="button"
                         onClick={capturePhoto}
-                        disabled={!cameraReady}
+                        disabled={cameraMode !== 'ready'}
                         className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
                       >
                         <Check className="h-4 w-4 mr-1" />
@@ -387,7 +385,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                       </button>
                       <button
                         type="button"
-                        onClick={() => { stopCamera(); startCamera(); }}
+                        onClick={initializeCamera}
                         className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
                       >
                         <RotateCcw className="h-4 w-4 mr-1" />
@@ -395,7 +393,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                       </button>
                       <button
                         type="button"
-                        onClick={stopCamera}
+                        onClick={cleanupCamera}
                         className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
                       >
                         <X className="h-4 w-4 mr-1" />
@@ -409,10 +407,10 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                   </div>
                 )}
                 
-                {!capturedPhoto && !showCamera && (
+                {cameraMode === 'none' && (
                   <button
                     type="button"
-                    onClick={startCamera}
+                    onClick={initializeCamera}
                     className="flex items-center justify-center mx-auto px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 border border-orange-200"
                   >
                     <Camera className="h-4 w-4 mr-2" />
@@ -420,7 +418,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                   </button>
                 )}
                 
-                {!capturedPhoto && (
+                {!photoDataUrl && (
                   <p className="text-xs text-gray-500 text-center mt-2">
                     Photo is optional - you can continue without taking a photo
                   </p>
