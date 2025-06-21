@@ -34,11 +34,23 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
     if (!activeShift) return;
     
     try {
+      // Get shift transactions directly for cash calculation
+      const { data: transactions, error } = await supabase
+        .from('transactions')
+        .select('amount, type')
+        .eq('shift_id', activeShift.id);
+
+      if (error) throw error;
+
+      const totalRevenue = (transactions || [])
+        .filter(t => ['POS_SALE', 'WALK_IN', 'MEMBERSHIP', 'REGISTRATION_FEE', 'COUPON_SALE'].includes(t.type))
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
       const stats = await shiftService.getShiftStats(activeShift.id);
-      setShiftStats(stats);
+      setShiftStats({ ...stats, totalRevenue });
       
       // Set suggested ending cash balance
-      const suggestedBalance = activeShift.starting_cash_float + stats.totalRevenue;
+      const suggestedBalance = activeShift.starting_cash_float + totalRevenue;
       setEndingCashBalance(suggestedBalance);
     } catch (error) {
       console.error('Error fetching shift stats:', error);
@@ -70,20 +82,37 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
     try {
       const endData: EndShiftData = {
         ending_cash_balance: endingCashBalance,
-        ending_staff_id: profile.id
+        ending_staff_id: profile.id,
+        system_calculated_cash: activeShift.starting_cash_float + shiftStats.totalRevenue,
+        cash_discrepancy: endingCashBalance - (activeShift.starting_cash_float + shiftStats.totalRevenue)
       };
 
-      const result = await shiftService.endShift(activeShift.id, endData);
+      // Update shift directly without complex query
+      const { data: updatedShift, error } = await supabase
+        .from('shifts')
+        .update({
+          end_time: new Date().toISOString(),
+          ending_staff_id: endData.ending_staff_id,
+          ending_cash_balance: endData.ending_cash_balance,
+          system_calculated_cash: endData.system_calculated_cash,
+          cash_discrepancy: endData.cash_discrepancy,
+          status: 'CLOSED'
+        })
+        .eq('id', activeShift.id)
+        .select()
+        .single();
+
+      if (error) throw error;
       
-      if (result.success) {
-        setSuccess(result.message);
-        setTimeout(() => {
-          onSuccess();
-          handleClose();
-        }, 2000);
-      } else {
-        setError(result.message);
-      }
+      const discrepancyMessage = endData.cash_discrepancy === 0 
+        ? 'Cash reconciliation perfect!' 
+        : `Cash discrepancy: ${endData.cash_discrepancy > 0 ? '+' : ''}RM${endData.cash_discrepancy.toFixed(2)}`;
+
+      setSuccess(`Shift ended successfully. ${discrepancyMessage}`);
+      setTimeout(() => {
+        onSuccess();
+        handleClose();
+      }, 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -100,7 +129,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
 
   const calculateDiscrepancy = () => {
     if (!activeShift) return 0;
-    const expectedCash = activeShift.starting_cash_float + shiftStats.totalRevenue;
+    const expectedCash = activeShift.starting_cash_float + (shiftStats.totalRevenue || 0);
     return endingCashBalance - expectedCash;
   };
 
@@ -117,7 +146,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
   if (!isOpen || !activeShift) return null;
 
   const discrepancy = calculateDiscrepancy();
-  const expectedCash = activeShift.starting_cash_float + shiftStats.totalRevenue;
+  const expectedCash = activeShift.starting_cash_float + (shiftStats.totalRevenue || 0);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -188,7 +217,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
               </div>
               <div className="flex justify-between border-t border-blue-200 pt-2">
                 <span className="text-blue-700 font-medium">Expected Cash:</span>
-                <span className="font-bold">RM{expectedCash.toFixed(2)}</span>
+                <span className="font-bold">RM{(expectedCash || 0).toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -226,16 +255,16 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Cash Discrepancy:</span>
                 <span className={`font-bold ${
-                  Math.abs(discrepancy) < 0.01 
+                  Math.abs(discrepancy || 0) < 0.01 
                     ? 'text-green-700' 
                     : 'text-amber-700'
                 }`}>
-                  RM{discrepancy.toFixed(2)}
+                  {(discrepancy || 0) === 0 ? 'Perfect!' : `${(discrepancy || 0) > 0 ? '+' : ''}RM${(discrepancy || 0).toFixed(2)}`}
                 </span>
               </div>
-              {Math.abs(discrepancy) >= 0.01 && (
+              {Math.abs(discrepancy || 0) >= 0.01 && (
                 <p className="text-xs text-amber-600 mt-1">
-                  {discrepancy > 0 ? 'Cash over expected amount' : 'Cash under expected amount'}
+                  {(discrepancy || 0) > 0 ? 'Cash over expected amount' : 'Cash under expected amount'}
                 </p>
               )}
             </div>

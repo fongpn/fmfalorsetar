@@ -9,6 +9,8 @@ export interface StartShiftData {
 export interface EndShiftData {
   ending_cash_balance: number;
   ending_staff_id: string;
+  system_calculated_cash?: number;
+  cash_discrepancy?: number;
   notes?: string;
 }
 
