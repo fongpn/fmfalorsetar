@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Ticket, DollarSign, Search, CheckCircle, AlertCircle, CreditCard, Smartphone } from 'lucide-react';
+import { X, User, Ticket, DollarSign, Search, CheckCircle, AlertCircle, CreditCard, Smartphone, Banknote, QrCode } from 'lucide-react';
 import { checkinService, CheckInData } from '../../services/checkinService';
 import { memberService } from '../../services/memberService';
 import { useShift } from '../../hooks/useShift';
@@ -111,6 +111,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
     setError('');
     setMemberSearchResults([]);
     setShowSearchResults(false);
+    setShowDuplicateConfirm(false);
     
     try {
       // First try exact member ID match
@@ -546,21 +547,21 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                         : 'border-gray-200 hover:border-gray-300 text-gray-600'
                     }`}
                   >
-                    <DollarSign className="h-6 w-6 mb-2" />
+                    <Banknote className="h-6 w-6 mb-2" />
                     <span className="text-sm font-medium">Cash</span>
                   </button>
                   
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('CARD')}
+                    onClick={() => setPaymentMethod('QR')}
                     className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                      paymentMethod === 'CARD'
+                      paymentMethod === 'QR'
                         ? 'border-orange-500 bg-orange-50 text-orange-700'
                         : 'border-gray-200 hover:border-gray-300 text-gray-600'
                     }`}
                   >
-                    <CreditCard className="h-6 w-6 mb-2" />
-                    <span className="text-sm font-medium">Card</span>
+                    <QrCode className="h-6 w-6 mb-2" />
+                    <span className="text-sm font-medium">QR</span>
                   </button>
                   
                   <button
