@@ -29,6 +29,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
   const [shiftStats, setShiftStats] = useState({
     totalTransactions: 0,
     totalRevenue: 0,
+    cashRevenue: 0,
     paymentBreakdown: { CASH: 0, QR: 0, BANK_TRANSFER: 0 } as PaymentMethodBreakdown,
     checkIns: 0,
     salesCount: 0
@@ -69,6 +70,11 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
         .filter(t => ['POS_SALE', 'WALK_IN', 'MEMBERSHIP', 'REGISTRATION_FEE', 'COUPON_SALE'].includes(t.type))
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
+      // Calculate cash-only revenue for reconciliation
+      const cashRevenue = (transactions || [])
+        .filter(t => ['POS_SALE', 'WALK_IN', 'MEMBERSHIP', 'REGISTRATION_FEE', 'COUPON_SALE'].includes(t.type))
+        .filter(t => t.payment_method === 'CASH')
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
       // Calculate payment method breakdown
       const paymentBreakdown: PaymentMethodBreakdown = { CASH: 0, QR: 0, BANK_TRANSFER: 0 };
       
@@ -86,10 +92,10 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
         });
 
       const stats = await shiftService.getShiftStats(activeShift.id);
-      setShiftStats({ ...stats, totalRevenue, paymentBreakdown });
+      setShiftStats({ ...stats, totalRevenue, cashRevenue, paymentBreakdown });
       
-      // Set suggested ending cash balance
-      const suggestedBalance = activeShift.starting_cash_float + totalRevenue;
+      // Set suggested ending cash balance (only cash transactions)
+      const suggestedBalance = activeShift.starting_cash_float + cashRevenue;
       setEndingCashBalance(suggestedBalance);
     } catch (error) {
       console.error('Error fetching shift stats:', error);
@@ -123,7 +129,8 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
         ending_cash_balance: endingCashBalance,
         ending_staff_id: profile.id,
         system_calculated_cash: activeShift.starting_cash_float + shiftStats.totalRevenue,
-        cash_discrepancy: endingCashBalance - (activeShift.starting_cash_float + shiftStats.totalRevenue),
+        system_calculated_cash: activeShift.starting_cash_float + shiftStats.cashRevenue,
+        cash_discrepancy: endingCashBalance - (activeShift.starting_cash_float + shiftStats.cashRevenue),
         handover_notes: handoverNotes.trim() || undefined,
         handover_to_staff_id: handoverToStaffId || undefined
       };
@@ -172,7 +179,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
 
   const calculateDiscrepancy = () => {
     if (!activeShift) return 0;
-    const expectedCash = activeShift.starting_cash_float + (shiftStats.totalRevenue || 0);
+    const expectedCash = activeShift.starting_cash_float + (shiftStats.cashRevenue || 0);
     return endingCashBalance - expectedCash;
   };
 
@@ -255,12 +262,12 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
                 <span className="font-medium">RM{activeShift.starting_cash_float.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-blue-700">Total Revenue:</span>
-                <span className="font-medium">RM{shiftStats.totalRevenue.toFixed(2)}</span>
+                <span className="text-blue-700">Cash Revenue:</span>
+                <span className="font-medium">RM{shiftStats.cashRevenue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-t border-blue-200 pt-2">
                 <span className="text-blue-700 font-medium">Expected Cash:</span>
-                <span className="font-bold">RM{(expectedCash || 0).toFixed(2)}</span>
+                <span className="font-bold">RM{(activeShift.starting_cash_float + shiftStats.cashRevenue).toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -269,7 +276,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
           <div className="bg-green-50 p-4 rounded-lg">
             <div className="flex items-center space-x-2 mb-3">
               <DollarSign className="h-4 w-4 text-green-600" />
-              <h3 className="text-sm font-medium text-green-900">Revenue by Payment Method</h3>
+              <h3 className="text-sm font-medium text-green-900">Total Revenue by Payment Method</h3>
             </div>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div className="text-center">
@@ -289,6 +296,14 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
                 <div className="text-lg font-bold text-green-900">
                   RM{(shiftStats.paymentBreakdown.BANK_TRANSFER || 0).toFixed(2)}
                 </div>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-green-200">
+              <div className="flex justify-between items-center">
+                <span className="text-green-700 font-medium">Total Revenue:</span>
+                <span className="text-xl font-bold text-green-900">
+                  RM{shiftStats.totalRevenue.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
@@ -358,7 +373,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
           {/* Discrepancy Display */}
           {endingCashBalance > 0 && (
             <div className={`p-4 rounded-lg ${
-              Math.abs(discrepancy) < 0.01 
+              Math.abs(discrepancy || 0) < 0.01 
                 ? 'bg-green-50 border border-green-200' 
                 : 'bg-amber-50 border border-amber-200'
             }`}>
