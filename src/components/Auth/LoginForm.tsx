@@ -57,22 +57,23 @@ export function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-6">
             {logoUrl ? (
               <img 
                 src={logoUrl} 
                 alt="Gym Logo" 
-                className="h-20 w-20 object-contain"
+                className="h-32 w-auto object-contain"
               />
             ) : (
-              <div className="p-3 bg-orange-600 rounded-full">
-                <Dumbbell className="h-8 w-8 text-white" />
+              <div className="p-4 bg-orange-600 rounded-full">
+                <Dumbbell className="h-12 w-12 text-white" />
               </div>
             )}
           </div>
-          <h2 className="mt-2 text-3xl font-bold text-gray-900">{gymName}</h2>
-          <p className="mt-2 text-sm text-gray-600">Management System</p>
-          <p className="mt-1 text-xs text-gray-500">Sign in to your staff account</p>
+          {!logoUrl && (
+            <h2 className="mt-2 text-3xl font-bold text-gray-900">{gymName}</h2>
+          )}
+          <p className="mt-3 text-sm text-gray-600">Sign in to your staff account</p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
