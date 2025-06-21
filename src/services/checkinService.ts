@@ -440,7 +440,6 @@ class CheckInService {
     members: number;
     coupons: number;
     walkIns: number;
-    students: number;
     revenue: number;
   }> {
     try {
@@ -477,8 +476,7 @@ class CheckInService {
         total: checkIns.length,
         members: checkIns.filter(c => c.type === 'MEMBER').length,
         coupons: checkIns.filter(c => c.type === 'COUPON').length,
-        walkIns: checkIns.filter(c => c.type === 'WALK_IN' && !c.notes?.toLowerCase().includes('student')).length,
-        students: checkIns.filter(c => c.type === 'WALK_IN' && c.notes?.toLowerCase().includes('student')).length,
+        walkIns: checkIns.filter(c => c.type === 'WALK_IN').length,
         revenue: transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0)
       };
 

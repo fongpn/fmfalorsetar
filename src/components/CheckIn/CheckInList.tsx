@@ -36,7 +36,7 @@ export function CheckInList({ checkIns, loading }: CheckInListProps) {
 
   const getCheckInTypeFromNotes = (checkIn: any) => {
     if (checkIn.type === 'WALK_IN' && checkIn.notes?.toLowerCase().includes('student')) {
-      return { label: 'Student', icon: <DollarSign className="h-4 w-4 text-blue-600" />, color: 'bg-blue-100 text-blue-800' };
+      return { label: 'Student Walk-in', icon: <DollarSign className="h-4 w-4 text-blue-600" />, color: 'bg-blue-100 text-blue-800' };
     }
     
     switch (checkIn.type) {
@@ -45,7 +45,7 @@ export function CheckInList({ checkIns, loading }: CheckInListProps) {
       case 'COUPON':
         return { label: 'Coupon', icon: <Ticket className="h-4 w-4 text-blue-600" />, color: 'bg-blue-100 text-blue-800' };
       case 'WALK_IN':
-        return { label: 'Walk-in', icon: <DollarSign className="h-4 w-4 text-orange-600" />, color: 'bg-orange-100 text-orange-800' };
+        return { label: 'Adult Walk-in', icon: <DollarSign className="h-4 w-4 text-orange-600" />, color: 'bg-orange-100 text-orange-800' };
       default:
         return { label: checkIn.type, icon: <User className="h-4 w-4 text-gray-600" />, color: 'bg-gray-100 text-gray-800' };
     }
@@ -101,7 +101,7 @@ export function CheckInList({ checkIns, loading }: CheckInListProps) {
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-900">
                       {checkIn.member?.full_name || 
-                       (checkIn.notes?.toLowerCase().includes('student') ? 'Student Guest' : 'Walk-in Guest')}
+                       (checkIn.notes?.toLowerCase().includes('student') ? 'Student Guest' : 'Adult Guest')}
                     </span>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color}`}>
                       {typeInfo.label}
