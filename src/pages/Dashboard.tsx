@@ -34,49 +34,72 @@ export function Dashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      // Fetch all members and calculate active/expiring counts
-      const allMembers = await memberService.getAllMembers();
-      const activeMembers = allMembers.filter(member => member.status === 'ACTIVE').length;
-      
-      // Count members expiring in next 7 days
-      const expiringMembers = allMembers.filter(member => 
-        member.status === 'ACTIVE' && 
-        member.days_until_expiry !== undefined && 
-        member.days_until_expiry <= 7 && 
-        member.days_until_expiry >= 0
-      ).length;
+      // Initialize stats object
+      const newStats: DashboardStats = {
+        activeMembers: 0,
+        todayRevenue: 0,
+        activeShifts: 0,
+        todayCheckIns: 0,
+        expiringMemberships: 0,
+        lowStockProducts: 0,
+      };
+
+      // Fetch each stat independently with error handling
+      try {
+        const allMembers = await memberService.getAllMembers();
+        newStats.activeMembers = allMembers.filter(member => member.status === 'ACTIVE').length;
+        
+        // Count members expiring in next 7 days
+        newStats.expiringMemberships = allMembers.filter(member => 
+          member.status === 'ACTIVE' && 
+          member.days_until_expiry !== undefined && 
+          member.days_until_expiry <= 7 && 
+          member.days_until_expiry >= 0
+        ).length;
+      } catch (error) {
+        console.warn('Error fetching member stats:', error);
+      }
 
       // Get today's revenue
-      const todayRevenue = await posService.getTodayRevenue();
+      try {
+        newStats.todayRevenue = await posService.getTodayRevenue();
+      } catch (error) {
+        console.warn('Error fetching revenue stats:', error);
+      }
 
       // Count active shifts
-      const { data: activeShiftsData, error: shiftsError } = await supabase
-        .from('shifts')
-        .select('id')
-        .eq('status', 'ACTIVE');
-      
-      if (shiftsError) throw shiftsError;
-      const activeShifts = activeShiftsData?.length || 0;
+      try {
+        const { data: activeShiftsData, error: shiftsError } = await supabase
+          .from('shifts')
+          .select('id')
+          .eq('status', 'ACTIVE');
+        
+        if (shiftsError) throw shiftsError;
+        newStats.activeShifts = activeShiftsData?.length || 0;
+      } catch (error) {
+        console.warn('Error fetching shift stats:', error);
+      }
 
       // Get today's check-ins
-      const checkInStats = await checkinService.getCheckInStats();
-      const todayCheckIns = checkInStats.total;
+      try {
+        const checkInStats = await checkinService.getCheckInStats();
+        newStats.todayCheckIns = checkInStats.total;
+      } catch (error) {
+        console.warn('Error fetching check-in stats:', error);
+      }
 
       // Get low stock products count
-      const lowStockProducts = await posService.getLowStockProducts(10);
-      const lowStockCount = lowStockProducts.length;
+      try {
+        const lowStockProducts = await posService.getLowStockProducts(10);
+        newStats.lowStockProducts = lowStockProducts.length;
+      } catch (error) {
+        console.warn('Error fetching stock stats:', error);
+      }
 
-      setStats({
-        activeMembers,
-        todayRevenue,
-        activeShifts,
-        todayCheckIns,
-        expiringMemberships: expiringMembers,
-        lowStockProducts: lowStockCount,
-      });
+      setStats(newStats);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
-      // Keep default values on error
+      // Set default values on complete failure
       setStats({
         activeMembers: 0,
         todayRevenue: 0,
