@@ -23,6 +23,7 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
 
   const [formData, setFormData] = useState({
     template_id: '',
+    coupon_code: '',
     member_id: '',
     payment_method: 'CASH',
     customer_name: ''
@@ -31,12 +32,6 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
   useEffect(() => {
     if (isOpen) {
       loadTemplates();
-      setFormData({
-        template_id: '',
-        member_id: '',
-        payment_method: 'CASH',
-        customer_name: ''
-      });
       setSearchQuery('');
       setMembers([]);
       setShowMemberSearch(false);
@@ -44,6 +39,24 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    // Set default template when templates are loaded
+    if (templates.length > 0 && !formData.template_id) {
+      // Find the 6-Visit template or use the first one
+      const defaultTemplate = templates.find(t => 
+        t.name.toLowerCase().includes('6') && 
+        t.name.toLowerCase().includes('visit')
+      ) || templates[0];
+      
+      if (defaultTemplate) {
+        setFormData(prev => ({ 
+          ...prev, 
+          template_id: defaultTemplate.id,
+          coupon_code: generateCouponCode()
+        }));
+      }
+    }
+  }, [templates]);
   const loadTemplates = async () => {
     try {
       const { data, error } = await supabase
@@ -127,8 +140,8 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
       const expiryDate = new Date(purchaseDate);
       expiryDate.setDate(expiryDate.getDate() + template.duration_days);
 
-      // Generate unique coupon code
-      const couponCode = generateCouponCode();
+      // Use the coupon code from form data
+      const couponCode = formData.coupon_code.trim() || generateCouponCode();
 
       // Create sold coupon
       const { data: soldCoupon, error: couponError } = await supabase
@@ -174,6 +187,7 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
   const handleClose = () => {
     setFormData({
       template_id: '',
+      coupon_code: '',
       member_id: '',
       payment_method: 'CASH',
       customer_name: ''
@@ -216,7 +230,13 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
             </label>
             <select
               value={formData.template_id}
-              onChange={(e) => setFormData(prev => ({ ...prev, template_id: e.target.value }))}
+              onChange={(e) => {
+                setFormData(prev => ({ 
+                  ...prev, 
+                  template_id: e.target.value,
+                  coupon_code: prev.coupon_code || generateCouponCode()
+                }));
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
               required
             >
@@ -227,6 +247,32 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Coupon Code *
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={formData.coupon_code}
+                onChange={(e) => setFormData(prev => ({ ...prev, coupon_code: e.target.value }))}
+                placeholder="Enter coupon code"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, coupon_code: generateCouponCode() }))}
+                className="px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
+              >
+                Generate
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Enter a custom code or click "Generate" for automatic code
+            </p>
           </div>
 
           <div>
@@ -355,7 +401,7 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.template_id}
+              disabled={loading || !formData.template_id || !formData.coupon_code.trim()}
               className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
             >
               {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
