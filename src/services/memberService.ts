@@ -318,11 +318,57 @@ class MemberService {
     const { data, error } = await supabase
       .from('membership_plans')
       .select('*')
-      .eq('is_active', true)
       .order('price');
 
     if (error) throw error;
     return data;
+  }
+
+  async createMembershipPlan(planData: Omit<MembershipPlan, 'id' | 'created_at' | 'updated_at'>): Promise<MembershipPlan> {
+    const { data, error } = await supabase
+      .from('membership_plans')
+      .insert([planData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async updateMembershipPlan(id: string, updates: Partial<MembershipPlan>): Promise<MembershipPlan> {
+    const { data, error } = await supabase
+      .from('membership_plans')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteMembershipPlan(id: string): Promise<void> {
+    // Check if plan is being used by any active memberships
+    const { data: activeMemberships, error: checkError } = await supabase
+      .from('memberships')
+      .select('id')
+      .eq('plan_id', id)
+      .eq('status', 'ACTIVE')
+      .limit(1);
+
+    if (checkError) throw checkError;
+
+    if (activeMemberships && activeMemberships.length > 0) {
+      throw new Error('Cannot delete plan that has active memberships. Please deactivate the plan instead.');
+    }
+
+    // Soft delete by setting is_active to false
+    const { error } = await supabase
+      .from('membership_plans')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
   }
 
   async updateMember(id: string, updates: Partial<Member>): Promise<Member> {
