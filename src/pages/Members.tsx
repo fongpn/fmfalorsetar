@@ -1,72 +1,52 @@
 import React from 'react';
+import { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
-import { Search, Plus, Edit, Eye, MoreHorizontal } from 'lucide-react';
+import { Search, Plus, Filter, Grid, List } from 'lucide-react';
+import { useMembers } from '../hooks/useMembers';
+import { MemberCard } from '../components/Members/MemberCard';
+import { NewMemberModal } from '../components/Members/NewMemberModal';
 
-// Sample member data for demonstration
-const sampleMembers = [
-  {
-    id: '1',
-    member_id_string: 'FMF-001',
-    full_name: 'John Smith',
-    email: 'john.smith@email.com',
-    phone_number: '+1 (555) 123-4567',
-    status: 'ACTIVE',
-    membership_end: '2024-12-15',
-    join_date: '2023-01-15',
-  },
-  {
-    id: '2',
-    member_id_string: 'FMF-002',
-    full_name: 'Sarah Johnson',
-    email: 'sarah.j@email.com',
-    phone_number: '+1 (555) 234-5678',
-    status: 'IN_GRACE',
-    membership_end: '2024-01-10',
-    join_date: '2023-02-20',
-  },
-  {
-    id: '3',
-    member_id_string: 'FMF-003',
-    full_name: 'Mike Wilson',
-    email: 'mike.wilson@email.com',
-    phone_number: '+1 (555) 345-6789',
-    status: 'EXPIRED',
-    membership_end: '2024-01-01',
-    join_date: '2023-03-10',
-  },
-];
 
 export function Members() {
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      ACTIVE: 'bg-green-100 text-green-800',
-      IN_GRACE: 'bg-yellow-100 text-yellow-800',
-      EXPIRED: 'bg-red-100 text-red-800',
-    };
-    
-    const labels = {
-      ACTIVE: 'Active',
-      IN_GRACE: 'Grace Period',
-      EXPIRED: 'Expired',
-    };
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showNewMemberModal, setShowNewMemberModal] = useState(false);
+  const { members, loading, error, searchMembers, refreshMembers } = useMembers();
 
-    return (
-      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${styles[status as keyof typeof styles]}`}>
-        {labels[status as keyof typeof labels]}
-      </span>
-    );
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    searchMembers(query);
   };
+
+  const filteredMembers = members.filter(member => {
+    if (statusFilter === 'ALL') return true;
+    return member.status === statusFilter;
+  });
+
+  const getStatusCounts = () => {
+    return {
+      ALL: members.length,
+      ACTIVE: members.filter(m => m.status === 'ACTIVE').length,
+      IN_GRACE: members.filter(m => m.status === 'IN_GRACE').length,
+      EXPIRED: members.filter(m => m.status === 'EXPIRED').length,
+    };
+  };
+
+  const statusCounts = getStatusCounts();
 
   return (
     <Layout title="Members" subtitle="Manage gym members and memberships">
       <div className="space-y-6">
         {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
           <div className="flex-1 max-w-md">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search members..."
                 className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
@@ -74,106 +54,121 @@ export function Members() {
           </div>
           
           <div className="flex space-x-3">
-            <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-              <Edit className="h-4 w-4 mr-2" />
-              Bulk Edit
+            <button
+              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+              className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid className="h-4 w-4 mr-2" />}
+              {viewMode === 'grid' ? 'List View' : 'Grid View'}
             </button>
-            <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700">
+            <button 
+              onClick={() => setShowNewMemberModal(true)}
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Member
             </button>
           </div>
         </div>
 
-        {/* Members Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Member
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Membership End
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Join Date
-                  </th>
-                  <th className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sampleMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            <span className="text-sm font-medium text-gray-700">
-                              {member.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{member.full_name}</div>
-                          <div className="text-sm text-gray-500">{member.member_id_string}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{member.email}</div>
-                      <div className="text-sm text-gray-500">{member.phone_number}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(member.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(member.membership_end).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(member.join_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-orange-600 hover:text-orange-900">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="text-gray-400 hover:text-gray-600">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Status Filter Tabs */}
+        <div className="bg-white rounded-lg border border-gray-200 p-1">
+          <div className="flex space-x-1">
+            {[
+              { key: 'ALL', label: 'All Members', count: statusCounts.ALL },
+              { key: 'ACTIVE', label: 'Active', count: statusCounts.ACTIVE },
+              { key: 'IN_GRACE', label: 'Grace Period', count: statusCounts.IN_GRACE },
+              { key: 'EXPIRED', label: 'Expired', count: statusCounts.EXPIRED },
+            ].map((filter) => (
+              <button
+                key={filter.key}
+                onClick={() => setStatusFilter(filter.key)}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  statusFilter === filter.key
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {filter.label} ({filter.count})
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">1</span> to <span className="font-medium">3</span> of{' '}
-            <span className="font-medium">3</span> results
-          </div>
-          <div className="flex space-x-2">
-            <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" disabled>
-              Previous
-            </button>
-            <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" disabled>
-              Next
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600">{error}</p>
+            <button 
+              onClick={refreshMembers}
+              className="mt-2 text-sm text-red-700 hover:text-red-900 underline"
+            >
+              Try again
             </button>
           </div>
-        </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+          </div>
+        )}
+
+        {/* Members Grid/List */}
+        {!loading && !error && (
+          <>
+            {filteredMembers.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">
+                  {searchQuery ? 'No members found matching your search.' : 'No members found.'}
+                </p>
+                {!searchQuery && (
+                  <button 
+                    onClick={() => setShowNewMemberModal(true)}
+                    className="mt-4 text-orange-600 hover:text-orange-700 underline"
+                  >
+                    Add your first member
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className={
+                viewMode === 'grid' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                  : 'space-y-4'
+              }>
+                {filteredMembers.map((member) => (
+                  <MemberCard 
+                    key={member.id} 
+                    member={member}
+                    onClick={() => {
+                      // TODO: Open member details modal
+                      console.log('Open member details:', member.id);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Results Summary */}
+            {filteredMembers.length > 0 && (
+              <div className="text-center text-sm text-gray-500">
+                Showing {filteredMembers.length} of {members.length} members
+              </div>
+            )}
+          </>
+        )}
+
+        {/* New Member Modal */}
+        <NewMemberModal
+          isOpen={showNewMemberModal}
+          onClose={() => setShowNewMemberModal(false)}
+          onSuccess={() => {
+            refreshMembers();
+            setShowNewMemberModal(false);
+          }}
+        />
       </div>
     </Layout>
   );
