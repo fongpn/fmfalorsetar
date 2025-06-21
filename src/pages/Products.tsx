@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { StockManagementModal } from '../components/Inventory/StockManagementModal';
 import { NewProductModal } from '../components/Products/NewProductModal';
-import { EditProductModal } from '../components/Products/EditProductModal';
+import { EditProductModal } from '../components/Products/EditProductModal.tsx';
 import { posService } from '../services/posService';
 import { Product } from '../lib/supabase';
 import { Search, Plus, Package, AlertTriangle, TrendingUp, Edit, Trash2 } from 'lucide-react';
