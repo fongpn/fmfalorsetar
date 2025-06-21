@@ -73,9 +73,16 @@ class ShiftService {
           transactions!inner(amount, type)
         `)
         .eq('id', shiftId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
+
+      if (!currentShift) {
+        return {
+          success: false,
+          message: 'Active shift not found or already ended.'
+        };
+      }
 
       // Calculate system calculated cash
       const totalRevenue = currentShift.transactions

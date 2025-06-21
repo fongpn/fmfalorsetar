@@ -101,12 +101,13 @@ class MemberService {
       .from('members')
       .select('*')
       .eq('member_id_string', memberIdString)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
       throw error;
     }
+
+    if (!member) return null;
 
     return this.calculateMemberStatus(member);
   }
