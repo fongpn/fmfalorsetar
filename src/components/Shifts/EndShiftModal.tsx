@@ -17,6 +17,8 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
   const [success, setSuccess] = useState('');
   const [endingCashBalance, setEndingCashBalance] = useState<number>(0);
   const [handoverNotes, setHandoverNotes] = useState('');
+  const [handoverToStaffId, setHandoverToStaffId] = useState('');
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
   const [shiftStats, setShiftStats] = useState({
     totalTransactions: 0,
     totalRevenue: 0,
@@ -28,8 +30,20 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
   useEffect(() => {
     if (isOpen && activeShift) {
       fetchShiftStats();
+      loadStaffMembers();
     }
   }, [isOpen, activeShift]);
+
+  const loadStaffMembers = async () => {
+    try {
+      const staff = await shiftService.getAllStaffMembers();
+      // Filter out current user from handover options
+      const filteredStaff = staff.filter(s => s.id !== profile?.id);
+      setStaffMembers(filteredStaff);
+    } catch (error) {
+      console.error('Error loading staff members:', error);
+    }
+  };
 
   const fetchShiftStats = async () => {
     if (!activeShift) return;
@@ -86,7 +100,8 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
         ending_staff_id: profile.id,
         system_calculated_cash: activeShift.starting_cash_float + shiftStats.totalRevenue,
         cash_discrepancy: endingCashBalance - (activeShift.starting_cash_float + shiftStats.totalRevenue),
-        handover_notes: handoverNotes.trim() || undefined
+        handover_notes: handoverNotes.trim() || undefined,
+        handover_to_staff_id: handoverToStaffId || undefined
       };
 
       // Update shift directly without complex query
@@ -125,6 +140,7 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
   const handleClose = () => {
     setEndingCashBalance(0);
     setHandoverNotes('');
+    setHandoverToStaffId('');
     setError('');
     setSuccess('');
     onClose();
@@ -245,6 +261,28 @@ export function EndShiftModal({ isOpen, onClose, onSuccess, activeShift }: EndSh
             </div>
             <p className="text-xs text-gray-500 mt-1">
               Count all cash in the register and enter the total amount
+            </p>
+          </div>
+
+          {/* Handover To Staff Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Hand Over To (Optional)
+            </label>
+            <select
+              value={handoverToStaffId}
+              onChange={(e) => setHandoverToStaffId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+            >
+              <option value="">Select staff member...</option>
+              {staffMembers.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.full_name} ({staff.role})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Select the staff member you are handing over to (if known)
             </p>
           </div>
 

@@ -77,6 +77,7 @@ export interface Shift {
   cash_discrepancy?: number;
   next_shift_id?: string;
   handover_notes?: string;
+  handover_to_staff_id?: string;
   status: 'ACTIVE' | 'CLOSED';
   created_at: string;
   updated_at: string;

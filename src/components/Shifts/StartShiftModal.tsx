@@ -16,6 +16,8 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
   const [success, setSuccess] = useState('');
   const [cashFloat, setCashFloat] = useState<number>(100);
   const [previousShiftNotes, setPreviousShiftNotes] = useState<string>('');
+  const [isHandoverForMe, setIsHandoverForMe] = useState(false);
+  const [handoverFromStaff, setHandoverFromStaff] = useState<string>('');
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -28,7 +30,12 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
     try {
       const { data: lastShift, error } = await supabase
         .from('shifts')
-        .select('handover_notes, ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)')
+        .select(`
+          handover_notes, 
+          handover_to_staff_id,
+          ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name),
+          handover_to_staff_profile:profiles!shifts_handover_to_staff_id_fkey(full_name)
+        `)
         .eq('status', 'CLOSED')
         .order('end_time', { ascending: false })
         .limit(1)
@@ -36,8 +43,18 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
 
       if (!error && lastShift?.handover_notes) {
         setPreviousShiftNotes(lastShift.handover_notes);
+        setHandoverFromStaff(lastShift.ending_staff_profile?.full_name || '');
+        
+        // Check if handover was specifically for current user
+        if (lastShift.handover_to_staff_id === profile?.id) {
+          setIsHandoverForMe(true);
+        } else {
+          setIsHandoverForMe(false);
+        }
       } else {
         setPreviousShiftNotes('');
+        setHandoverFromStaff('');
+        setIsHandoverForMe(false);
       }
     } catch (err) {
       console.warn('Could not load previous shift notes:', err);
@@ -89,6 +106,8 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
   const handleClose = () => {
     setCashFloat(100);
     setPreviousShiftNotes('');
+    setIsHandoverForMe(false);
+    setHandoverFromStaff('');
     setError('');
     setSuccess('');
     onClose();
@@ -127,12 +146,36 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
 
           {/* Previous Shift Handover Notes */}
           {previousShiftNotes && (
-            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+            <div className={`p-4 rounded-lg border ${
+              isHandoverForMe 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-blue-50 border-blue-200'
+            }`}>
               <div className="flex items-center space-x-2 mb-2">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <h3 className="text-sm font-medium text-blue-900">Notes from Previous Shift</h3>
+                <Clock className={`h-4 w-4 ${
+                  isHandoverForMe ? 'text-green-600' : 'text-blue-600'
+                }`} />
+                <h3 className={`text-sm font-medium ${
+                  isHandoverForMe ? 'text-green-900' : 'text-blue-900'
+                }`}>
+                  {isHandoverForMe ? 'Handover Notes for You' : 'Notes from Previous Shift'}
+                </h3>
+                {isHandoverForMe && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    For You
+                  </span>
+                )}
               </div>
-              <div className="text-sm text-blue-700 bg-white p-3 rounded border">
+              {handoverFromStaff && (
+                <p className={`text-xs mb-2 ${
+                  isHandoverForMe ? 'text-green-600' : 'text-blue-600'
+                }`}>
+                  From: {handoverFromStaff}
+                </p>
+              )}
+              <div className={`text-sm bg-white p-3 rounded border ${
+                isHandoverForMe ? 'text-green-700' : 'text-blue-700'
+              }`}>
                 {previousShiftNotes}
               </div>
             </div>

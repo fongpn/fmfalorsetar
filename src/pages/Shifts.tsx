@@ -232,6 +232,9 @@ export function Shifts() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Handover
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Handed Over To
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -296,6 +299,13 @@ export function Shifts() {
                                 </div>
                               ) : (
                                 <span className="text-sm text-gray-400">No notes</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {shift.handover_to_staff_profile?.full_name || (
+                                <span className="text-gray-400">Not specified</span>
                               )}
                             </div>
                           </td>

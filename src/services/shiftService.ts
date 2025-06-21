@@ -12,6 +12,7 @@ export interface EndShiftData {
   system_calculated_cash?: number;
   cash_discrepancy?: number;
   handover_notes?: string;
+  handover_to_staff_id?: string;
 }
 
 export interface ShiftResult {
@@ -125,6 +126,7 @@ class ShiftService {
           system_calculated_cash: systemCalculatedCash,
           cash_discrepancy: cashDiscrepancy,
           handover_notes: endData.handover_notes,
+          handover_to_staff_id: endData.handover_to_staff_id,
           status: 'CLOSED'
         })
         .eq('id', shiftId)
@@ -178,6 +180,7 @@ class ShiftService {
           *,
           starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name),
           ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name),
+          handover_to_staff_profile:profiles!shifts_handover_to_staff_id_fkey(full_name),
           next_shift:shifts(id, start_time)
         `)
         .eq('status', 'CLOSED')
@@ -274,6 +277,20 @@ class ShiftService {
       return {};
     }
   }
+
+  async getAllStaffMembers(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .order('full_name');
 }
 
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching staff members:', error);
+      return [];
+    }
+  }
 export const shiftService = new ShiftService();
