@@ -203,8 +203,8 @@ export function Products() {
                           <tr key={product.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center mr-4">
-                                  <Package className="h-5 w-5 text-gray-400" />
+                                <div className="w-10 h-10 mr-4">
+                                  <ProductImage product={product} size="w-10 h-10" />
                                 </div>
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">
@@ -281,5 +281,50 @@ export function Products() {
         />
       </div>
     </Layout>
+  );
+}
+
+// Component for product image with error handling
+function ProductImage({ product, size = "w-10 h-10" }: { product: any; size?: string }) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(false);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setImageError(false);
+  };
+
+  // Show default icon if no photo URL, image failed to load, or still loading
+  if (!product.photo_url || imageError || !imageLoaded) {
+    return (
+      <div className={`${size} bg-gray-200 rounded-lg flex items-center justify-center`}>
+        <Package className="h-5 w-5 text-gray-400" />
+        {/* Hidden image to handle loading/error states */}
+        {product.photo_url && !imageError && (
+          <img
+            src={product.photo_url}
+            alt=""
+            className="hidden"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Show actual image once it's loaded successfully
+  return (
+    <img
+      src={product.photo_url}
+      alt={product.name}
+      className={`${size} rounded-lg object-cover`}
+      onError={handleImageError}
+    />
   );
 }
