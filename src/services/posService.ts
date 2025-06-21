@@ -133,7 +133,7 @@ class POSService {
 
       return {
         success: true,
-        message: `Sale completed successfully! Total: $${saleData.total.toFixed(2)}`,
+        message: `Sale completed successfully! Total: RM${saleData.total.toFixed(2)}`,
         transaction,
         stock_movements: stockMovements
       };

@@ -314,7 +314,7 @@ class CheckInService {
 
     return {
       success: true,
-      message: `Walk-in check-in successful! Payment: $${walkInRate}`,
+      message: `Walk-in check-in successful! Payment: RM${walkInRate}`,
       check_in: checkIn,
       transaction
     };

@@ -1,51 +1,55 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { Plus, Search, Ticket, Calendar, Users, DollarSign } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export function Coupons() {
   const [activeTab, setActiveTab] = useState<'templates' | 'sold'>('templates');
   const [searchQuery, setSearchQuery] = useState('');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [soldCoupons, setSoldCoupons] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const mockTemplates = [
-    {
-      id: '1',
-      name: '10-Visit Pass',
-      price: 80,
-      max_entries: 10,
-      duration_days: 90,
-      is_active: true
-    },
-    {
-      id: '2',
-      name: '5-Visit Pass',
-      price: 45,
-      max_entries: 5,
-      duration_days: 60,
-      is_active: true
+  React.useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [templatesResult, soldCouponsResult] = await Promise.all([
+        supabase.from('coupon_templates').select('*').eq('is_active', true).order('name'),
+        supabase.from('sold_coupons').select(`
+          *,
+          template:coupon_templates(name),
+          member:members(full_name)
+        `).order('purchase_date', { ascending: false })
+      ]);
+
+      if (templatesResult.error) throw templatesResult.error;
+      if (soldCouponsResult.error) throw soldCouponsResult.error;
+
+      setTemplates(templatesResult.data || []);
+      setSoldCoupons(soldCouponsResult.data || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const mockSoldCoupons = [
-    {
-      id: '1',
-      code: 'FMF-C001',
-      template_name: '10-Visit Pass',
-      member_name: 'John Smith',
-      entries_remaining: 7,
-      expiry_date: '2024-03-15',
-      purchase_date: '2023-12-15'
-    },
-    {
-      id: '2',
-      code: 'FMF-C002',
-      template_name: '5-Visit Pass',
-      member_name: 'Sarah Johnson',
-      entries_remaining: 2,
-      expiry_date: '2024-02-20',
-      purchase_date: '2023-12-20'
-    }
-  ];
-
+  if (loading) {
+    return (
+      <Layout title="Coupons" subtitle="Manage coupon templates and track sold coupons">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+        </div>
+      </Layout>
+    );
+  }
   return (
     <Layout title="Coupons" subtitle="Manage coupon templates and track sold coupons">
       <div className="space-y-6">
@@ -87,7 +91,7 @@ export function Coupons() {
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
-              Templates ({mockTemplates.length})
+              Templates ({templates.length})
             </button>
             <button
               onClick={() => setActiveTab('sold')}
@@ -97,111 +101,145 @@ export function Coupons() {
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
-              Sold Coupons ({mockSoldCoupons.length})
+              Sold Coupons ({soldCoupons.length})
             </button>
           </div>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600">{error}</p>
+            <button 
+              onClick={fetchData}
+              className="mt-2 text-sm text-red-700 hover:text-red-900 underline"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
         {/* Templates Tab */}
         {activeTab === 'templates' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockTemplates.map((template) => (
-              <div key={template.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Ticket className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
-                      <p className="text-2xl font-bold text-purple-600">RM{template.price}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Users className="h-4 w-4 mr-2" />
-                    <span>{template.max_entries} entries</span>
-                  </div>
-
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    <span>{template.duration_days} days validity</span>
-                  </div>
-
-                  <div className="pt-3 border-t border-gray-200">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      template.is_active 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {template.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
+          <>
+            {templates.length === 0 ? (
+              <div className="text-center py-12">
+                <Ticket className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No coupon templates found</p>
+                <button className="mt-4 text-orange-600 hover:text-orange-700 underline">
+                  Create your first template
+                </button>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templates.map((template) => (
+                  <div key={template.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <Ticket className="h-6 w-6 text-purple-600" />
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
+                          <p className="text-2xl font-bold text-purple-600">RM{template.price}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Users className="h-4 w-4 mr-2" />
+                        <span>{template.max_entries} entries</span>
+                      </div>
+
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        <span>{template.duration_days} days validity</span>
+                      </div>
+
+                      <div className="pt-3 border-t border-gray-200">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          template.is_active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {template.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {/* Sold Coupons Tab */}
         {activeTab === 'sold' && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Coupon
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Member
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Entries
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Expiry
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {mockSoldCoupons.map((coupon) => (
-                    <tr key={coupon.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{coupon.code}</div>
-                          <div className="text-sm text-gray-500">{coupon.template_name}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{coupon.member_name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{coupon.entries_remaining} remaining</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{new Date(coupon.expiry_date).toLocaleDateString()}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          coupon.entries_remaining > 0 && new Date(coupon.expiry_date) > new Date()
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {coupon.entries_remaining > 0 && new Date(coupon.expiry_date) > new Date() ? 'Active' : 'Expired'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <>
+            {soldCoupons.length === 0 ? (
+              <div className="text-center py-12">
+                <Ticket className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No sold coupons found</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Coupon
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Member
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Entries
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Expiry
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {soldCoupons.map((coupon) => (
+                        <tr key={coupon.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{coupon.code}</div>
+                              <div className="text-sm text-gray-500">{coupon.template?.name}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{coupon.member?.full_name || 'No member'}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{coupon.entries_remaining} remaining</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{new Date(coupon.expiry_date).toLocaleDateString()}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              coupon.entries_remaining > 0 && new Date(coupon.expiry_date) > new Date()
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {coupon.entries_remaining > 0 && new Date(coupon.expiry_date) > new Date() ? 'Active' : 'Expired'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Layout>

@@ -1,50 +1,44 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { Clock, DollarSign, User, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useShift } from '../hooks/useShift';
 
 export function Shifts() {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
+  const [shiftHistory, setShiftHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { activeShift } = useShift();
 
-  const mockCurrentShift = {
-    id: '1',
-    start_time: '2024-01-15T08:00:00Z',
-    starting_staff: 'John Smith',
-    starting_cash_float: 100.00,
-    current_transactions: 15,
-    current_revenue: 450.00,
-    status: 'ACTIVE'
-  };
+  React.useEffect(() => {
+    fetchShiftHistory();
+  }, []);
 
-  const mockShiftHistory = [
-    {
-      id: '2',
-      start_time: '2024-01-14T08:00:00Z',
-      end_time: '2024-01-14T18:00:00Z',
-      starting_staff: 'Sarah Johnson',
-      ending_staff: 'Sarah Johnson',
-      starting_cash_float: 100.00,
-      ending_cash_balance: 380.00,
-      system_calculated_cash: 375.00,
-      cash_discrepancy: 5.00,
-      total_transactions: 28,
-      total_revenue: 720.00,
-      status: 'CLOSED'
-    },
-    {
-      id: '3',
-      start_time: '2024-01-13T08:00:00Z',
-      end_time: '2024-01-13T18:00:00Z',
-      starting_staff: 'Mike Wilson',
-      ending_staff: 'Mike Wilson',
-      starting_cash_float: 100.00,
-      ending_cash_balance: 295.00,
-      system_calculated_cash: 295.00,
-      cash_discrepancy: 0.00,
-      total_transactions: 22,
-      total_revenue: 580.00,
-      status: 'CLOSED'
+  const fetchShiftHistory = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('shifts')
+        .select(`
+          *,
+          starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name),
+          ending_staff_profile:profiles!shifts_ending_staff_id_fkey(full_name)
+        `)
+        .eq('status', 'CLOSED')
+        .order('start_time', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setShiftHistory(data || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const formatDuration = (start: string, end?: string) => {
     const startTime = new Date(start);
@@ -54,6 +48,16 @@ export function Shifts() {
     const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
   };
+
+  if (loading) {
+    return (
+      <Layout title="Shifts" subtitle="Manage staff shifts and cash reconciliation">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="Shifts" subtitle="Manage staff shifts and cash reconciliation">
@@ -102,10 +106,23 @@ export function Shifts() {
           </div>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600">{error}</p>
+            <button 
+              onClick={fetchShiftHistory}
+              className="mt-2 text-sm text-red-700 hover:text-red-900 underline"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
         {/* Current Shift Tab */}
         {activeTab === 'current' && (
           <div className="space-y-6">
-            {mockCurrentShift ? (
+            {activeShift ? (
               <>
                 {/* Current Shift Overview */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -123,7 +140,7 @@ export function Shifts() {
                         <User className="h-4 w-4 mr-2" />
                         Staff Member
                       </div>
-                      <p className="font-semibold text-gray-900">{mockCurrentShift.starting_staff}</p>
+                      <p className="font-semibold text-gray-900">Current Staff</p>
                     </div>
 
                     <div>
@@ -131,7 +148,7 @@ export function Shifts() {
                         <Clock className="h-4 w-4 mr-2" />
                         Duration
                       </div>
-                      <p className="font-semibold text-gray-900">{formatDuration(mockCurrentShift.start_time)}</p>
+                      <p className="font-semibold text-gray-900">{formatDuration(activeShift.start_time)}</p>
                     </div>
 
                     <div>
@@ -139,7 +156,7 @@ export function Shifts() {
                         <DollarSign className="h-4 w-4 mr-2" />
                         Starting Float
                       </div>
-                      <p className="font-semibold text-gray-900">RM{mockCurrentShift.starting_cash_float.toFixed(2)}</p>
+                      <p className="font-semibold text-gray-900">RM{activeShift.starting_cash_float.toFixed(2)}</p>
                     </div>
 
                     <div>
@@ -148,51 +165,17 @@ export function Shifts() {
                         Started
                       </div>
                       <p className="font-semibold text-gray-900">
-                        {new Date(mockCurrentShift.start_time).toLocaleString()}
+                        {new Date(activeShift.start_time).toLocaleString()}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Current Shift Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Calendar className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Transactions</p>
-                        <p className="text-2xl font-bold text-gray-900">{mockCurrentShift.current_transactions}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <DollarSign className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Revenue</p>
-                        <p className="text-2xl font-bold text-gray-900">RM{mockCurrentShift.current_revenue.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <DollarSign className="h-6 w-6 text-orange-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Expected Cash</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          RM{(mockCurrentShift.starting_cash_float + mockCurrentShift.current_revenue).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-700">
+                    Shift statistics and real-time data will be displayed here. 
+                    Connect to view current transactions and revenue.
+                  </p>
                 </div>
               </>
             ) : (
@@ -209,79 +192,90 @@ export function Shifts() {
 
         {/* Shift History Tab */}
         {activeTab === 'history' && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Shift Details
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Staff
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Revenue
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cash Reconciliation
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {mockShiftHistory.map((shift) => (
-                    <tr key={shift.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {new Date(shift.start_time).toLocaleDateString()}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(shift.start_time).toLocaleTimeString()} - {new Date(shift.end_time!).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{shift.starting_staff}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatDuration(shift.start_time, shift.end_time)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">${shift.total_revenue.toFixed(2)}</div>
-                          <div className="text-sm font-medium text-gray-900">RM{shift.total_revenue.toFixed(2)}</div>
-                          <div className="text-sm text-gray-500">{shift.total_transactions} transactions</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {shift.cash_discrepancy === 0 ? (
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          ) : (
-                            <AlertCircle className="h-4 w-4 text-amber-500 mr-2" />
-                          )}
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              RM{shift.ending_cash_balance.toFixed(2)}
-                            </div>
-                            {shift.cash_discrepancy !== 0 && (
-                              <div className="text-sm text-amber-600">
-                                {shift.cash_discrepancy > 0 ? '+' : ''}RM{shift.cash_discrepancy.toFixed(2)} variance
+          <>
+            {shiftHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No shift history found</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Shift Details
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Staff
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Duration
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Cash Float
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Cash Reconciliation
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {shiftHistory.map((shift) => (
+                        <tr key={shift.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {new Date(shift.start_time).toLocaleDateString()}
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                              <div className="text-sm text-gray-500">
+                                {new Date(shift.start_time).toLocaleTimeString()} - {shift.end_time ? new Date(shift.end_time).toLocaleTimeString() : 'Ongoing'}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {shift.starting_staff_profile?.full_name || 'Unknown'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {formatDuration(shift.start_time, shift.end_time)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              RM{shift.starting_cash_float.toFixed(2)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              {shift.cash_discrepancy === 0 ? (
+                                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4 text-amber-500 mr-2" />
+                              )}
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  RM{(shift.ending_cash_balance || 0).toFixed(2)}
+                                </div>
+                                {shift.cash_discrepancy !== 0 && (
+                                  <div className="text-sm text-amber-600">
+                                    {shift.cash_discrepancy > 0 ? '+' : ''}RM{(shift.cash_discrepancy || 0).toFixed(2)} variance
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Layout>

@@ -279,22 +279,9 @@ export function DataManagement() {
             {/* Recent Backups */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Backups</h3>
-              <div className="space-y-3">
-                {[
-                  { date: '2024-01-15', size: '2.4 MB', type: 'Full Backup' },
-                  { date: '2024-01-14', size: '2.3 MB', type: 'Full Backup' },
-                  { date: '2024-01-13', size: '2.2 MB', type: 'Full Backup' }
-                ].map((backup, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{backup.type}</p>
-                      <p className="text-sm text-gray-500">{backup.date} • {backup.size}</p>
-                    </div>
-                    <button className="text-orange-600 hover:text-orange-700 text-sm font-medium">
-                      Download
-                    </button>
-                  </div>
-                ))}
+              <div className="text-center py-8">
+                <p className="text-gray-500">No backups found</p>
+                <p className="text-sm text-gray-400 mt-1">Create your first backup to see it here</p>
               </div>
             </div>
           </div>

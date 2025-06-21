@@ -215,27 +215,6 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-          <div className="space-y-3">
-            {[
-              { action: 'New member registration', member: 'John Smith', time: '5 minutes ago' },
-              { action: 'Membership renewal', member: 'Sarah Johnson', time: '12 minutes ago' },
-              { action: 'Walk-in check-in', member: 'Guest User', time: '18 minutes ago' },
-              { action: 'Product sale', member: 'Mike Wilson', time: '25 minutes ago' },
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{activity.action}</p>
-                  <p className="text-xs text-gray-500">{activity.member}</p>
-                </div>
-                <p className="text-xs text-gray-400">{activity.time}</p>
-              </div>
-            ))}
-          </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-        </div>
       </div>
     </Layout>
   );
