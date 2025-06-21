@@ -100,7 +100,7 @@ export function ProductGrid({ products, onAddToCart, loading }: ProductGridProps
             </div>
             
             {/* Enhanced Stock Display */}
-            <div className="mb-4">
+            <div className="mb-4 flex justify-center">
               <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
                 product.current_stock === 0 
                   ? 'bg-red-100 text-red-800 border border-red-200' 
