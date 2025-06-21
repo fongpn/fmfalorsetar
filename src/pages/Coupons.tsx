@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { NewCouponTemplateModal } from '../components/Coupons/NewCouponTemplateModal';
 import { SellCouponModal } from '../components/Coupons/SellCouponModal';
-import { Plus, Search, Ticket, Calendar, Users, DollarSign } from 'lucide-react';
+import { Plus, Search, Ticket, Calendar, Users, DollarSign, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export function Coupons() {
@@ -14,6 +14,11 @@ export function Coupons() {
   const [error, setError] = useState<string | null>(null);
   const [showNewTemplateModal, setShowNewTemplateModal] = useState(false);
   const [showSellCouponModal, setShowSellCouponModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; template: any | null }>({
+    isOpen: false,
+    template: null
+  });
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   React.useEffect(() => {
     fetchData();
@@ -45,6 +50,49 @@ export function Coupons() {
     }
   };
 
+  const handleDeleteTemplate = async (template: any) => {
+    try {
+      setDeleting(template.id);
+      setError(null);
+      
+      // Check if template has been used (has sold coupons)
+      const { data: soldCoupons, error: checkError } = await supabase
+        .from('sold_coupons')
+        .select('id')
+        .eq('template_id', template.id)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (soldCoupons && soldCoupons.length > 0) {
+        // Template has been used - soft delete (deactivate)
+        const { error: updateError } = await supabase
+          .from('coupon_templates')
+          .update({ 
+            is_active: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', template.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Template hasn't been used - hard delete
+        const { error: deleteError } = await supabase
+          .from('coupon_templates')
+          .delete()
+          .eq('id', template.id);
+
+        if (deleteError) throw deleteError;
+      }
+
+      await fetchData();
+      setDeleteConfirm({ isOpen: false, template: null });
+    } catch (err: any) {
+      setError(`Failed to delete template: ${err.message}`);
+    } finally {
+      setDeleting(null);
+    }
+  };
   if (loading) {
     return (
       <Layout title="Coupons" subtitle="Manage coupon templates and track sold coupons">
@@ -211,7 +259,7 @@ export function Coupons() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {templates.map((template) => (
-                  <div key={template.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                  <div key={template.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow relative group">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center">
                         <div className="p-2 bg-purple-100 rounded-lg">
@@ -222,6 +270,20 @@ export function Coupons() {
                           <p className="text-2xl font-bold text-purple-600">RM{template.price}</p>
                         </div>
                       </div>
+                      
+                      {/* Delete Button - Shows on hover */}
+                      <button
+                        onClick={() => setDeleteConfirm({ isOpen: true, template })}
+                        disabled={deleting === template.id}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full disabled:opacity-50"
+                        title="Delete template"
+                      >
+                        {deleting === template.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
 
                     <div className="space-y-3">
@@ -262,6 +324,68 @@ export function Coupons() {
           }}
         />
 
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm.isOpen && deleteConfirm.template && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-semibold text-gray-900">Delete Coupon Template</h2>
+                <button
+                  onClick={() => setDeleteConfirm({ isOpen: false, template: null })}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Are you sure you want to delete "{deleteConfirm.template.name}"?
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      This action cannot be undone. If this template has been used for sold coupons, 
+                      it will be deactivated instead to preserve transaction history.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+                  <div className="flex">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 mr-2" />
+                    <div className="text-sm text-amber-700">
+                      <p className="font-medium">Important:</p>
+                      <p>Templates with existing sold coupons will be deactivated to maintain transaction integrity.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setDeleteConfirm({ isOpen: false, template: null })}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTemplate(deleteConfirm.template)}
+                    disabled={deleting === deleteConfirm.template?.id}
+                    className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {deleting === deleteConfirm.template?.id && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    )}
+                    Delete Template
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <SellCouponModal
           isOpen={showSellCouponModal}
           onClose={() => setShowSellCouponModal(false)}
