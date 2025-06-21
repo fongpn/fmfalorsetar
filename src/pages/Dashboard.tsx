@@ -243,8 +243,10 @@ export function Dashboard() {
               className="flex items-center justify-center px-4 py-3 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
             >
               <TrendingUp className="h-5 w-5 mr-2" />
+              View Reports
+            </button>
+          </div>
         </div>
-
       </div>
     </Layout>
   );
