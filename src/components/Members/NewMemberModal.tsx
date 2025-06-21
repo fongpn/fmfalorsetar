@@ -137,21 +137,45 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setStream(mediaStream);
       
       if (videoRef.current) {
+      // Wait for next tick to ensure video element is rendered
+      setTimeout(() => {
         videoRef.current.srcObject = mediaStream;
         
-        // Wait for video to be ready
-        videoRef.current.onloadedmetadata = () => {
+          // Set up event listeners
+          const video = videoRef.current;
+          
+          const handleLoadedMetadata = () => {
           console.log('Video metadata loaded');
-          setCameraReady(true);
+            // Try to play the video
+            video.play().then(() => {
+              console.log('Video playing successfully');
+              setCameraReady(true);
+            }).catch((playError) => {
+              console.error('Error playing video:', playError);
+              setCameraError('Failed to start video playback');
+            });
         };
         
-        videoRef.current.oncanplay = () => {
+          const handleCanPlay = () => {
           console.log('Video can play');
           setCameraReady(true);
         };
+          
+          const handleError = (e: any) => {
+            console.error('Video error:', e);
+            setCameraError('Video playback error occurred');
+          };
+          
+          // Add event listeners
+          video.addEventListener('loadedmetadata', handleLoadedMetadata);
+          video.addEventListener('canplay', handleCanPlay);
+          video.addEventListener('error', handleError);
+          
+          // Store cleanup function
+          video.dataset.cleanupAdded = 'true';
       }
+      }, 100);
       
-      setShowCamera(true);
     } catch (err: any) {
       console.error('Camera access error:', err);
       setCameraError(`Camera access failed: ${err.message}. Please check permissions and try again.`);
@@ -162,9 +186,24 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
-      setCameraReady(false);
-      setCameraError('');
     }
+    
+    // Clean up video element
+    if (videoRef.current) {
+      const video = videoRef.current;
+      video.srcObject = null;
+      
+      // Remove event listeners if they were added
+      if (video.dataset.cleanupAdded) {
+        video.removeEventListener('loadedmetadata', () => {});
+        video.removeEventListener('canplay', () => {});
+        video.removeEventListener('error', () => {});
+        delete video.dataset.cleanupAdded;
+      }
+    }
+    
+    setCameraReady(false);
+    setCameraError('');
     setShowCamera(false);
   };
 
@@ -181,8 +220,8 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       const context = canvas.getContext('2d');
       
       // Set canvas dimensions to match video display size
-      canvas.width = 640;
-      canvas.height = 480;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       
       if (context) {
         // Draw the video frame to canvas
