@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { NewCouponTemplateModal } from '../components/Coupons/NewCouponTemplateModal';
 import { SellCouponModal } from '../components/Coupons/SellCouponModal';
+import { CouponDetailsModal } from '../components/Coupons/CouponDetailsModal';
 import { Plus, Search, Ticket, Calendar, Users, DollarSign, Trash2, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -14,6 +15,8 @@ export function Coupons() {
   const [error, setError] = useState<string | null>(null);
   const [showNewTemplateModal, setShowNewTemplateModal] = useState(false);
   const [showSellCouponModal, setShowSellCouponModal] = useState(false);
+  const [showCouponDetailsModal, setShowCouponDetailsModal] = useState(false);
+  const [selectedCoupon, setSelectedCoupon] = useState<any | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; template: any | null }>({
     isOpen: false,
     template: null
@@ -93,6 +96,17 @@ export function Coupons() {
       setDeleting(null);
     }
   };
+
+  const handleCouponClick = (coupon: any) => {
+    setSelectedCoupon(coupon);
+    setShowCouponDetailsModal(true);
+  };
+
+  const handleCouponDetailsClose = () => {
+    setShowCouponDetailsModal(false);
+    setSelectedCoupon(null);
+  };
+
   if (loading) {
     return (
       <Layout title="Coupons" subtitle="Manage coupon templates and track sold coupons">
@@ -210,7 +224,11 @@ export function Coupons() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {soldCoupons.map((coupon) => (
-                        <tr key={coupon.id} className="hover:bg-gray-50">
+                        <tr 
+                          key={coupon.id} 
+                          className="hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleCouponClick(coupon)}
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium text-gray-900">{coupon.code}</div>
@@ -218,7 +236,9 @@ export function Coupons() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{coupon.member?.full_name || 'No member'}</div>
+                            <div className="text-sm text-gray-900">
+                              {coupon.member?.full_name || coupon.customer_name || 'Walk-in customer'}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{coupon.entries_remaining} remaining</div>
@@ -392,6 +412,16 @@ export function Coupons() {
           onSuccess={() => {
             fetchData();
             setShowSellCouponModal(false);
+          }}
+        />
+
+        {/* Coupon Details Modal */}
+        <CouponDetailsModal
+          isOpen={showCouponDetailsModal}
+          onClose={handleCouponDetailsClose}
+          coupon={selectedCoupon}
+          onSuccess={() => {
+            fetchData();
           }}
         />
       </div>

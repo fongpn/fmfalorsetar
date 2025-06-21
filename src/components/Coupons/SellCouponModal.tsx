@@ -212,6 +212,17 @@ export function SellCouponModal({ isOpen, onClose, onSuccess }: SellCouponModalP
 
       if (transactionError) throw transactionError;
 
+      // If customer name is provided but no member is selected, store the name
+      if (formData.customer_name && !formData.member_id) {
+        // Update the sold coupon with customer name for non-member purchases
+        const { error: updateError } = await supabase
+          .from('sold_coupons')
+          .update({ customer_name: formData.customer_name })
+          .eq('id', soldCoupon.id);
+
+        if (updateError) console.warn('Failed to update customer name:', updateError);
+      }
+
       onSuccess();
       handleClose();
     } catch (err: any) {
