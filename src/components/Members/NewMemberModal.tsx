@@ -403,7 +403,7 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
 
           {step === 2 && (
             <form onSubmit={handlePurchaseSubmit} className="space-y-6">
-                <div>
+                <div className="space-y-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Select Membership Plan *</label>
                     <div className="space-y-3">
                         {plans.map((plan) => (
@@ -412,11 +412,19 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                                 <div>
                                     <h4 className="font-semibold text-gray-800">{plan.name}</h4>
                                     <p className="text-sm text-gray-500">{plan.duration_months} month(s)</p>
+                                    {plan.free_months_on_signup > 0 && (
+                                      <p className="text-xs text-green-600 font-medium">+ {plan.free_months_on_signup} free month{plan.free_months_on_signup !== 1 ? 's' : ''}</p>
+                                    )}
                                 </div>
                                 <p className="font-semibold text-lg text-gray-800">RM{plan.price.toFixed(2)}</p>
                             </label>
                         ))}
                     </div>
+                </div>
+
+                {/* Payment Method Section with improved spacing */}
+                <div className="space-y-4 pt-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Payment Method *</label>
                   <div className="grid grid-cols-3 gap-3">
                     <button
                       type="button"
@@ -459,15 +467,16 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                   </div>
                 </div>
 
+                {/* Order Summary Section with improved spacing */}
                 {selectedPlan && (
-                    <div className="bg-gray-50 p-4 rounded-lg border">
+                    <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 mt-6">
                         <h4 className="font-medium text-gray-900 mb-3 text-lg">Order Summary</h4>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">{selectedPlan.name}</span>
                                 <span className="font-medium">RM{selectedPlan.price.toFixed(2)}</span>
                             </div>
-                      <div className="flex justify-between text-xs text-gray-500">
+                      <div className="flex justify-between text-xs text-gray-500 mb-2">
                         <span>Duration: {selectedPlan.duration_months} month{selectedPlan.duration_months !== 1 ? 's' : ''}</span>
                         {selectedPlan.free_months_on_signup > 0 && (
                           <span>+ {selectedPlan.free_months_on_signup} free month{selectedPlan.free_months_on_signup !== 1 ? 's' : ''}</span>
@@ -479,25 +488,25 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
                                     <span className="font-medium">RM{regFeeAmount.toFixed(2)}</span>
                                 </div>
                             )}
-                            <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                            <div className="border-t border-gray-300 pt-3 mt-3 flex justify-between font-bold text-lg">
                                 <span>Total</span>
                                 <span>RM{totalAmount.toFixed(2)}</span>
                             </div>
+                            {expiryDate && (
+                              <div className="flex justify-between text-xs text-green-600 font-medium pt-2 border-t border-gray-200 mt-2">
+                                <span>Membership expires:</span>
+                                <span>{expiryDate.toLocaleDateString('en-GB', { 
+                                  day: '2-digit', 
+                                  month: 'short', 
+                                  year: 'numeric' 
+                                })}</span>
+                              </div>
+                            )}
                         </div>
                     </div>
                 )}
-                      {expiryDate && (
-                        <div className="flex justify-between text-xs text-green-600 font-medium pt-1 border-t border-gray-200">
-                          <span>Membership expires:</span>
-                          <span>{expiryDate.toLocaleDateString('en-GB', { 
-                            day: '2-digit', 
-                            month: 'short', 
-                            year: 'numeric' 
-                          })}</span>
-                        </div>
-                      )}
               
-              <div className="flex justify-between items-center pt-4">
+              <div className="flex justify-between items-center pt-6 border-t border-gray-200">
                 <Button type="button" variant="outline" onClick={() => setStep(1)}>Back</Button>
                 <Button type="submit" variant="primary" loading={loading} disabled={loading || !purchaseData.plan_id}>
                   {loading ? 'Processing...' : `Complete Registration`}
