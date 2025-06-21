@@ -398,19 +398,28 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                                   src={member.photo_url} 
                                   alt={member.full_name}
                                   className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                                  onError={(e) => {
+                                    // Fallback to default avatar if image fails to load
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                  }}
                                 />
                               ) : (
-                                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center border border-gray-200">
                                   <User className="h-5 w-5 text-gray-400" />
                                 </div>
                               )}
+                              {/* Fallback avatar (hidden by default, shown if image fails) */}
+                              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center border border-gray-200 hidden">
+                                <User className="h-5 w-5 text-gray-400" />
+                              </div>
                             </div>
                             <div>
-                            <p className="font-medium text-gray-900">{member.full_name}</p>
-                            <p className="text-sm text-gray-500">ID: {member.member_id_string}</p>
-                            {member.phone_number && (
-                              <p className="text-xs text-gray-400">Phone: {member.phone_number}</p>
-                            )}
+                              <p className="font-medium text-gray-900">{member.full_name}</p>
+                              <p className="text-sm text-gray-500">ID: {member.member_id_string}</p>
+                              {member.phone_number && (
+                                <p className="text-xs text-gray-400">Phone: {member.phone_number}</p>
+                              )}
                             </div>
                           </div>
                           <div className={`px-2 py-1 rounded-full text-xs font-medium ${
