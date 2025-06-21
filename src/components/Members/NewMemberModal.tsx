@@ -1,58 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Phone, CreditCard, Camera, RotateCcw, Check, Car as CarIcon, Banknote, Smartphone, QrCode, AlertCircle } from 'lucide-react';
-// Using a more standard icon for ID Card
-import { VscVscode as IdCard } from 'react-icons/vsc';
-
-
-// --- MOCK DATA AND SERVICES FOR DEMONSTRATION ---
-// In your actual app, you would remove this section and use your real imports.
-
-type MembershipPlan = {
-  id: string;
-  name: string;
-  price: number;
-  duration_months: number;
-  has_registration_fee: boolean;
-  free_months_on_signup: number;
-  is_active: boolean;
-};
-
-const memberService = {
-  getMembershipPlans: async (): Promise<MembershipPlan[]> => {
-    console.log('Fetching membership plans...');
-    await new Promise(res => setTimeout(res, 500)); // Simulate network delay
-    return [
-      { id: 'plan1', name: 'Monthly Basic', price: 50.00, duration_months: 1, has_registration_fee: true, free_months_on_signup: 0, is_active: true },
-      { id: 'plan2', name: 'Quarterly Gold', price: 135.00, duration_months: 3, has_registration_fee: true, free_months_on_signup: 0, is_active: true },
-      { id: 'plan3', name: 'Annual VIP (12 + 2)', price: 450.00, duration_months: 12, has_registration_fee: false, free_months_on_signup: 2, is_active: true },
-    ];
-  },
-  getRegistrationFee: async (): Promise<number> => 50.00,
-  generateMemberId: async (): Promise<string> => {
-    // Simulate getting the last used ID from database
-    // In real implementation, this would query the database for the highest member_id_string
-    const lastUsedId = localStorage.getItem('lastMemberId') || '0000';
-    const nextId = (parseInt(lastUsedId) + 1).toString().padStart(4, '0');
-    localStorage.setItem('lastMemberId', nextId);
-    return nextId;
-  },
-  createMember: async (data: any) => {
-    console.log('Creating member:', data);
-    await new Promise(res => setTimeout(res, 1000));
-    return { ...data, id: `member-${Date.now()}` };
-  },
-  purchaseMembership: async (data: any) => {
-    console.log('Purchasing membership:', data);
-    await new Promise(res => setTimeout(res, 1000));
-    return { success: true };
-  }
-};
-
-const useShift = () => ({ activeShift: { id: 'shift-active-123' } });
-const useAuth = () => ({ profile: { id: 'cs-user-456' } });
-
-// --- END OF MOCK DATA AND SERVICES ---
-
+import { X, User, Mail, Phone, CreditCard, Camera, RotateCcw, Check, Car as IdCard, Banknote, Smartphone, QrCode, AlertCircle } from 'lucide-react';
+import { memberService } from '../../services/memberService';
+import { useShift } from '../../hooks/useShift';
+import { useAuth } from '../../contexts/AuthContext';
+import { MembershipPlan } from '../../lib/supabase';
 
 interface NewMemberModalProps {
   isOpen: boolean;
@@ -70,14 +21,15 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
   const { activeShift } = useShift();
   const { profile } = useAuth();
 
-  // Camera state management
-  const [cameraMode, setCameraMode] = useState<'none' | 'loading' | 'ready' | 'captured' | 'error'>('none');
-  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  // Camera states
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
 
-  // Form data states
+  // Member data
   const [memberData, setMemberData] = useState({
     member_id_string: '',
     full_name: '',
@@ -85,135 +37,41 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     phone_number: '',
     photo_url: ''
   });
+
+  // Purchase data
   const [purchaseData, setPurchaseData] = useState({
     plan_id: '',
     payment_method: 'CASH'
   });
 
-  // Effect to reset the form and load initial data when the modal is opened
   useEffect(() => {
     if (isOpen) {
-      resetForm(false); // Reset without closing
-      loadInitialData();
-    } else {
-      cleanupCamera(); // Ensure camera is off when modal is not open
+      loadPlans();
+      loadRegistrationFee();
+      generateMemberId();
+      setStep(1);
+      setError('');
+      setCapturedPhoto(null);
+      setCameraError('');
     }
   }, [isOpen]);
 
-  // Effect to handle component unmount cleanup
   useEffect(() => {
+    // Cleanup camera stream when component unmounts or modal closes
     return () => {
-      cleanupCamera();
+      if (stream) {
+        console.log('Cleaning up camera stream');
+        stream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []);
-  
-  const loadInitialData = async () => {
-    await loadPlans();
-    await loadRegistrationFee();
-    await generateMemberId();
-  };
-
-  /**
-   * Stops all camera tracks and resets the video element.
-   * This is the single source of truth for turning off the camera.
-   */
-  const cleanupCamera = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      mediaStreamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  /**
-   * Initializes and starts the camera stream.
-   * This function now follows a clean state flow to prevent race conditions.
-   */
-  const initializeCamera = async () => {
-    if (cameraMode === 'loading' || cameraMode === 'ready') return;
-
-    cleanupCamera(); // Ensure any previous stream is stopped
-    setCameraMode('loading');
-    setCameraError('');
-    setPhotoDataUrl(null);
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError('Camera not supported in this browser.');
-      setCameraMode('error');
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: false
-      });
-      
-      mediaStreamRef.current = stream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.oncanplay = () => {
-          setCameraMode('ready');
-        };
-      }
-    } catch (err: any) {
-      console.error('Camera initialization failed:', err);
-      let message = `Camera failed: ${err.message}`;
-      if (err.name === 'NotAllowedError') {
-          message = 'Camera permission was denied. Please allow access in your browser settings.';
-      } else if (err.name === 'NotFoundError') {
-          message = 'No camera was found on this device.';
-      }
-      setCameraError(message);
-      setCameraMode('error');
-    }
-  };
-
-  /**
-   * Captures a frame from the video stream and sets it as the member's photo.
-   */
-  const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current && cameraMode === 'ready') {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
-
-      if (!context) {
-        setCameraError('Could not get canvas context.');
-        return;
-      }
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      // Flip the context horizontally to un-mirror the captured image
-      context.translate(canvas.width, 0);
-      context.scale(-1, 1);
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      setPhotoDataUrl(dataUrl);
-      setMemberData(prev => ({ ...prev, photo_url: dataUrl }));
-      setCameraMode('captured');
-      
-      cleanupCamera(); // Stop the stream after capturing
-    }
-  };
-
-  const retakePhoto = () => {
-    setPhotoDataUrl(null);
-    setMemberData(prev => ({ ...prev, photo_url: '' }));
-    initializeCamera();
-  };
+  }, [stream]);
 
   const loadPlans = async () => {
     try {
       const data = await memberService.getMembershipPlans();
       setPlans(data);
     } catch (err: any) {
-      setError('Failed to load membership plans.');
+      setError(err.message);
     }
   };
 
@@ -232,19 +90,124 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       const memberId = await memberService.generateMemberId();
       setMemberData(prev => ({ ...prev, member_id_string: memberId }));
     } catch (err: any) {
-      setError('Failed to generate Member ID.');
+      setError(err.message);
     }
+  };
+
+  const startCamera = async () => {
+    try {
+      setError('');
+      setCameraError('');
+      setCameraReady(false);
+      
+      // Stop any existing stream first
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access is not supported in this browser');
+      }
+
+      console.log('Requesting camera access...');
+      
+      // Request camera with multiple fallback options
+      let mediaStream;
+      try {
+        // Try with ideal constraints first
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640, max: 1280 },
+            height: { ideal: 480, max: 720 },
+            facingMode: 'user'
+          },
+          audio: false
+        });
+      } catch (err) {
+        console.log('Ideal constraints failed, trying basic constraints:', err);
+        // Fallback to basic constraints
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
+      console.log('Camera access granted, setting up video element...');
+      setStream(mediaStream);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded');
+          setCameraReady(true);
+        };
+        
+        videoRef.current.oncanplay = () => {
+          console.log('Video can play');
+          setCameraReady(true);
+        };
+      }
+      
+      setShowCamera(true);
+    } catch (err: any) {
+      console.error('Camera access error:', err);
+      setCameraError(`Camera access failed: ${err.message}. Please check permissions and try again.`);
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+      setCameraReady(false);
+      setCameraError('');
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        setCameraError('Video not ready. Please wait a moment and try again.');
+        return;
+      }
+      
+      const context = canvas.getContext('2d');
+      
+      // Set canvas dimensions to match video display size
+      canvas.width = 640;
+      canvas.height = 480;
+      
+      if (context) {
+        // Draw the video frame to canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setCapturedPhoto(photoDataUrl);
+        setMemberData(prev => ({ ...prev, photo_url: photoDataUrl }));
+        stopCamera();
+      }
+    }
+  };
+
+  const retakePhoto = () => {
+    setCapturedPhoto(null);
+    setMemberData(prev => ({ ...prev, photo_url: '' }));
+    setCameraError('');
+    startCamera();
   };
 
   const handleMemberSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!memberData.full_name.trim()) {
-      setError('Full name is required.');
+      setError('Full name is required');
       return;
-    }
-    if (!memberData.member_id_string.trim()) {
-        setError('Member ID is required.');
-        return;
     }
     setStep(2);
     setError('');
@@ -257,12 +220,14 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       setError('No active shift found. Please start a shift first.');
       return;
     }
+
     if (!profile) {
-      setError('User profile not found. Please log in again.');
+      setError('User profile not found');
       return;
     }
+
     if (!purchaseData.plan_id) {
-      setError('Please select a membership plan.');
+      setError('Please select a membership plan');
       return;
     }
 
@@ -270,7 +235,10 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
     setError('');
 
     try {
+      // Create member
       const member = await memberService.createMember(memberData);
+
+      // Purchase membership
       await memberService.purchaseMembership({
         member_id: member.id,
         plan_id: purchaseData.plan_id,
@@ -279,20 +247,18 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
         processed_by: profile.id,
         is_renewal: false
       });
+
       onSuccess();
-      handleClose();
+      onClose();
+      resetForm();
     } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred during purchase.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const resetForm = (shouldCloseModal = true) => {
-    setStep(1);
-    setLoading(false);
-    setError('');
-    setCameraError('');
+  const resetForm = () => {
     setMemberData({
       member_id_string: '',
       full_name: '',
@@ -304,15 +270,15 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
       plan_id: '',
       payment_method: 'CASH'
     });
-    setPhotoDataUrl(null);
-    cleanupCamera();
-    if (shouldCloseModal) {
-      onClose();
-    }
+    setCapturedPhoto(null);
+    stopCamera();
+    setCameraError('');
+    setStep(1);
   };
 
   const handleClose = () => {
-    resetForm(true);
+    resetForm();
+    onClose();
   };
 
   const selectedPlan = plans.find(p => p.id === purchaseData.plan_id);
@@ -335,258 +301,359 @@ export function NewMemberModal({ isOpen, onClose, onSuccess }: NewMemberModalPro
 
   if (!isOpen) return null;
 
+  const paymentMethods = [
+    { value: 'CASH', label: 'Cash', icon: Banknote },
+    { value: 'QR', label: 'QR Code', icon: QrCode },
+    { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: Smartphone },
+  ];
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[95vh] flex flex-col transform transition-all duration-300 scale-95 animate-fade-in-up">
-        <div className="flex items-center justify-between p-5 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">New Member Registration</h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 transition-colors">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-900">New Member Registration</h2>
+          <button
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="overflow-y-auto p-6 space-y-4">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
-              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
+        {error && (
+          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {cameraError && (
+          <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-sm text-amber-600">{cameraError}</p>
+            <button onClick={() => setCameraError('')} className="text-xs text-amber-700 underline mt-1">Dismiss</button>
+          </div>
+        )}
+
+        {step === 1 && (
+          <form onSubmit={handleMemberSubmit} className="p-6 space-y-4">
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-medium text-gray-900">Member Information</h3>
+              <p className="text-sm text-gray-500">Step 1 of 2</p>
             </div>
-          )}
-          
-          {step === 1 && (
-            <form onSubmit={handleMemberSubmit} className="space-y-6">
-              {/* Member ID */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Member ID (4-digit)</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={memberData.member_id_string} 
-                    onChange={(e) => {
-                      // Only allow 4-digit numbers
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                      setMemberData(prev => ({ ...prev, member_id_string: value }));
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" 
-                    placeholder="0001" 
-                    maxLength={4}
-                    required 
-                  />
-                  <Button type="button" variant="outline" onClick={generateMemberId}>
-                    Generate
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Next available ID loaded by default</p>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Member ID (4-digit number)
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={memberData.member_id_string}
+                  onChange={(e) => {
+                    // Only allow 4-digit numbers
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    setMemberData(prev => ({ ...prev, member_id_string: value }));
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  placeholder="0001"
+                  maxLength={4}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={generateMemberId}
+                  className="px-3 py-2 text-sm text-orange-600 border border-orange-200 rounded-md hover:bg-orange-50"
+                >
+                  Generate
+                </button>
               </div>
+              <p className="text-xs text-gray-500 mt-1">Next available ID loaded by default</p>
+            </div>
 
-              {/* Photo Section - Centered */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700 text-center">Member Photo</label>
-                <div className="flex flex-col items-center space-y-4">
-                  {photoDataUrl ? (
-                    <img src={photoDataUrl} alt="Member" className="w-32 h-32 rounded-full object-cover border-4 border-green-500 shadow-lg" />
-                  ) : (
-                    <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center border-2 border-dashed border-gray-300">
-                      <User className="h-16 w-16 text-gray-400" />
-                    </div>
-                  )}
-                  
-                  <div className="flex gap-2">
-                    {cameraMode === 'none' && !photoDataUrl && (
-                      <Button type="button" variant="outline" onClick={initializeCamera}>
-                        <Camera className="h-4 w-4 mr-2" />
-                        Take Photo
-                      </Button>
-                    )}
-                    {photoDataUrl && (
-                      <Button type="button" variant="outline" onClick={retakePhoto}>
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Retake
-                      </Button>
-                    )}
-                  </div>
+            {/* Photo Section - Centered */}
+            <div className="flex flex-col items-center space-y-4">
+              {capturedPhoto ? (
+                <div className="relative">
+                  <img 
+                    src={capturedPhoto} 
+                    alt="Member photo"
+                    className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-orange-200 shadow-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={retakePhoto}
+                    className="absolute bottom-0 right-0 p-2 bg-orange-600 text-white rounded-full hover:bg-orange-700 shadow-lg"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </button>
                 </div>
-
-                {cameraMode !== 'none' && cameraMode !== 'captured' && (
-                  <div className="relative w-full aspect-video bg-gray-900 rounded-lg overflow-hidden mt-4">
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
-                    {cameraMode === 'loading' && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                        <div className="text-center text-white">
-                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white mx-auto mb-2"></div>
-                          <p className="text-sm">Loading camera...</p>
+              ) : showCamera ? (
+                <div className="relative">
+                  <div className="relative w-64 h-48 mx-auto bg-gray-200 rounded-lg overflow-hidden">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                      style={{ transform: 'scaleX(-1)' }} // Mirror the video for better UX
+                    />
+                    {!cameraReady && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
+                          <p className="text-sm text-gray-600">Loading camera...</p>
                         </div>
                       </div>
                     )}
-                    <canvas ref={canvasRef} className="hidden" />
-                    {cameraMode === 'ready' && (
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                        <Button type="button" onClick={capturePhoto} className="!rounded-full !p-4 h-16 w-16 !bg-white !text-orange-600 hover:!bg-gray-100 shadow-lg">
-                          <Camera className="h-8 w-8" />
-                        </Button>
-                      </div>
-                    )}
                   </div>
-                )}
-                {cameraError && (
-                  <div className="text-center">
-                    <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{cameraError}</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Member Details */}
-              <div className="space-y-4">
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                    <input type="text" value={memberData.full_name} onChange={(e) => setMemberData(prev => ({ ...prev, full_name: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="e.g. John Doe" required />
-                 </div>
-                 
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">IC or Passport Number</label>
-                    <div className="relative">
-                      <CarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input type="text" value={memberData.ic_passport_number} onChange={(e) => setMemberData(prev => ({ ...prev, ic_passport_number: e.target.value }))} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="123456-78-9012 or A12345678"/>
-                    </div>
-                 </div>
-
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input type="tel" value={memberData.phone_number} onChange={(e) => setMemberData(prev => ({ ...prev, phone_number: e.target.value }))} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="+60 12-345 6789" />
-                    </div>
-                 </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-                <Button type="submit" variant="primary">Next: Select Plan</Button>
-              </div>
-            </form>
-          )}
-
-          {step === 2 && (
-            <form onSubmit={handlePurchaseSubmit} className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Membership Plan *</label>
-                    <div className="space-y-3">
-                        {plans.map((plan) => (
-                            <label key={plan.id} className={`flex justify-between items-center p-4 border rounded-lg cursor-pointer transition-all ${purchaseData.plan_id === plan.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-gray-200 hover:border-gray-300'}`}>
-                                <input type="radio" name="plan" value={plan.id} checked={purchaseData.plan_id === plan.id} onChange={(e) => setPurchaseData(prev => ({ ...prev, plan_id: e.target.value }))} className="sr-only" />
-                                <div>
-                                    <h4 className="font-semibold text-gray-800">{plan.name}</h4>
-                                    <p className="text-sm text-gray-500">{plan.duration_months} month(s)</p>
-                                </div>
-                                <p className="font-semibold text-lg text-gray-800">RM{plan.price.toFixed(2)}</p>
-                            </label>
-                        ))}
-                    </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <canvas ref={canvasRef} className="hidden" />
+                  <div className="flex justify-center space-x-3 mt-3">
                     <button
                       type="button"
-                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'CASH' }))}
-                      className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                        purchaseData.payment_method === 'CASH'
-                          ? 'border-orange-500 bg-orange-50 text-orange-700'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
+                      onClick={capturePhoto}
+                      disabled={!cameraReady}
+                      className="flex items-center px-4 py-2 bg-white text-orange-600 border-2 border-orange-600 rounded-md hover:bg-orange-50 text-sm font-medium disabled:opacity-50"
                     >
-                      <Banknote className="h-6 w-6 mb-2" />
-                      <span className="text-sm font-medium">Cash</span>
+                      <Check className="h-4 w-4 mr-1" />
+                      Capture
                     </button>
-                    
                     <button
                       type="button"
-                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'QR' }))}
-                      className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                        purchaseData.payment_method === 'QR'
-                          ? 'border-orange-500 bg-orange-50 text-orange-700'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
+                      onClick={() => { stopCamera(); startCamera(); }}
+                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
                     >
-                      <QrCode className="h-6 w-6 mb-2" />
-                      <span className="text-sm font-medium">QR</span>
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      Retry
                     </button>
-                    
                     <button
                       type="button"
-                      onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: 'BANK_TRANSFER' }))}
-                      className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                        purchaseData.payment_method === 'BANK_TRANSFER'
-                          ? 'border-orange-500 bg-orange-50 text-orange-700'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
+                      onClick={stopCamera}
+                      className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
                     >
-                      <Smartphone className="h-6 w-6 mb-2" />
-                      <span className="text-sm font-medium">Bank Transfer</span>
+                      <X className="h-4 w-4 mr-1" />
+                      Cancel
                     </button>
                   </div>
                 </div>
+              ) : (
+                <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <User className="h-16 w-16 text-gray-400" />
+                </div>
+              )}
+              
+              {!capturedPhoto && !showCamera && (
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="flex items-center justify-center mx-auto px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 border border-orange-200"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Take Photo
+                </button>
+              )}
+            </div>
 
-                {selectedPlan && (
-                    <div className="bg-gray-50 p-4 rounded-lg border">
-                        <h4 className="font-medium text-gray-900 mb-3 text-lg">Order Summary</h4>
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">{selectedPlan.name}</span>
-                                <span className="font-medium">RM{selectedPlan.price.toFixed(2)}</span>
-                            </div>
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>Duration: {selectedPlan.duration_months} month{selectedPlan.duration_months !== 1 ? 's' : ''}</span>
-                        {selectedPlan.free_months_on_signup > 0 && (
-                          <span>+ {selectedPlan.free_months_on_signup} free month{selectedPlan.free_months_on_signup !== 1 ? 's' : ''}</span>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name *
+              </label>
+              <input
+                type="text"
+                value={memberData.full_name}
+                onChange={(e) => setMemberData(prev => ({ ...prev, full_name: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                placeholder="Enter full name"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                IC or Passport Number
+              </label>
+              <div className="relative">
+                <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={memberData.ic_passport_number}
+                  onChange={(e) => setMemberData(prev => ({ ...prev, ic_passport_number: e.target.value }))}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  placeholder="123456-78-9012 or A12345678"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="tel"
+                  value={memberData.phone_number}
+                  onChange={(e) => setMemberData(prev => ({ ...prev, phone_number: e.target.value }))}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  placeholder="Enter phone number"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700"
+              >
+                Next: Select Plan
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 2 && (
+          <form onSubmit={handlePurchaseSubmit} className="p-6 space-y-4">
+            <div className="text-center mb-6">
+              <CreditCard className="h-12 w-12 text-orange-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900">Membership Plan</h3>
+              <p className="text-sm text-gray-500">Step 2 of 2</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Membership Plan *
+              </label>
+              <div className="space-y-3">
+                {plans.map((plan) => (
+                  <label
+                    key={plan.id}
+                    className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
+                      purchaseData.plan_id === plan.id
+                        ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="plan"
+                      value={plan.id}
+                      checked={purchaseData.plan_id === plan.id}
+                      onChange={(e) => setPurchaseData(prev => ({ ...prev, plan_id: e.target.value }))}
+                      className="sr-only"
+                    />
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{plan.name}</h4>
+                        <div className="text-sm text-gray-500 space-y-1">
+                          <p>{plan.duration_months} month{plan.duration_months !== 1 ? 's' : ''}</p>
+                          {plan.free_months_on_signup > 0 && (
+                            <p className="text-green-600 font-medium">
+                              + {plan.free_months_on_signup} free month{plan.free_months_on_signup !== 1 ? 's' : ''}
+                            </p>
+                          )}
+                          {plan.has_registration_fee && (
+                            <p className="text-amber-600 text-xs">+ RM{registrationFee} registration fee</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-gray-900 text-lg">RM{plan.price}</p>
+                        {plan.has_registration_fee && (
+                          <p className="text-xs text-gray-500">+ RM{registrationFee} reg fee</p>
                         )}
                       </div>
-                            {regFeeAmount > 0 && (
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Registration Fee</span>
-                                    <span className="font-medium">RM{regFeeAmount.toFixed(2)}</span>
-                                </div>
-                            )}
-                            <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
-                                <span>Total</span>
-                                <span>RM{totalAmount.toFixed(2)}</span>
-                            </div>
-                        </div>
                     </div>
-                )}
-                      {expiryDate && (
-                        <div className="flex justify-between text-xs text-green-600 font-medium pt-1 border-t border-gray-200">
-                          <span>Membership expires:</span>
-                          <span>{expiryDate.toLocaleDateString('en-GB', { 
-                            day: '2-digit', 
-                            month: 'short', 
-                            year: 'numeric' 
-                          })}</span>
-                        </div>
-                      )}
-              
-                <div className="flex justify-between items-center pt-4">
-                  <Button type="button" variant="outline" onClick={() => setStep(1)}>Back</Button>
-                  <Button type="submit" variant="primary" loading={loading} disabled={loading || !purchaseData.plan_id}>
-                    {loading ? 'Processing...' : `Complete Registration`}
-                  </Button>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Payment Method *
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {paymentMethods.map((method) => (
+                  <button
+                    key={method.value}
+                    type="button"
+                    onClick={() => setPurchaseData(prev => ({ ...prev, payment_method: method.value }))}
+                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                      purchaseData.payment_method === method.value
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <method.icon className="h-6 w-6 mb-2" />
+                    <span className="text-sm font-medium">{method.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {selectedPlan && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-3">Order Summary</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>{selectedPlan.name}</span>
+                    <span>RM{selectedPlan.price}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Duration: {selectedPlan.duration_months} month{selectedPlan.duration_months !== 1 ? 's' : ''}</span>
+                    {selectedPlan.free_months_on_signup > 0 && (
+                      <span>+ {selectedPlan.free_months_on_signup} free month{selectedPlan.free_months_on_signup !== 1 ? 's' : ''}</span>
+                    )}
+                  </div>
+                  {regFeeAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span>Registration Fee</span>
+                      <span>RM{regFeeAmount}</span>
+                    </div>
+                  )}
+                  <div className="border-t pt-2 flex justify-between font-medium">
+                    <span>Total</span>
+                    <span>RM{totalAmount}</span>
+                  </div>
+                  {expiryDate && (
+                    <div className="flex justify-between text-xs text-green-600 font-medium pt-1 border-t border-gray-200">
+                      <span>Membership expires:</span>
+                      <span>{expiryDate.toLocaleDateString('en-GB', { 
+                        day: '2-digit', 
+                        month: 'short', 
+                        year: 'numeric' 
+                      })}</span>
+                    </div>
+                  )}
                 </div>
-            </form>
-          )}
-        </div>
+              </div>
+            )}
+
+            <div className="flex justify-between space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading || !purchaseData.plan_id}
+                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
+              >
+                {loading ? 'Processing...' : `Complete Registration (RM${totalAmount})`}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
-}
-
-// Custom Button component for better styling control
-function Button({ children, variant = 'primary', loading = false, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'outline', loading?: boolean }) {
-    const baseClasses = "inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
-    const variantClasses = {
-        primary: 'bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-500',
-        outline: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-orange-500',
-    };
-    return (
-        <button className={`${baseClasses} ${variantClasses[variant]}`} disabled={loading} {...props}>
-            {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
-            {children}
-        </button>
-    );
 }
