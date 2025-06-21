@@ -234,12 +234,21 @@ export function DataManagement() {
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">
-                      Drag and drop your CSV file here, or{' '}
-                      <button className="text-orange-600 hover:text-orange-700 underline">
+                      Drag and drop your CSV file here, or
+                      <button 
+                        onClick={handleBrowseClick}
+                        className="text-orange-600 hover:text-orange-700 underline ml-1 font-medium">
                         browse to upload
                       </button>
                     </p>
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
                 </div>
 
                 <div className="flex items-center space-x-4">
@@ -342,14 +351,16 @@ export function DataManagement() {
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
                       {uploadStatus === 'idle' ? (
                         <>
-                          <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <div className="flex justify-center">
+                            <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                          </div>
                           <div className="text-sm text-gray-600">
                             <p className="mb-2">Drag and drop your CSV file here</p>
                             <p className="mb-0">- or -</p>
                             <button 
                               type="button"
                               onClick={handleBrowseClick}
-                              className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 inline-flex items-center"
+                              className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 inline-flex items-center justify-center w-full sm:w-auto"
                             >
                               <Upload className="h-4 w-4 mr-2" />
                               Browse Files
@@ -363,7 +374,7 @@ export function DataManagement() {
                           <button
                             type="button"
                             onClick={() => setUploadStatus('idle')}
-                            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm"
+                            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm w-full sm:w-auto"
                           >
                             Upload another file
                           </button>
@@ -375,7 +386,7 @@ export function DataManagement() {
                           <button
                             type="button"
                             onClick={() => setUploadStatus('idle')}
-                            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm"
+                            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm w-full sm:w-auto"
                           >
                             Try again
                           </button>
@@ -391,6 +402,11 @@ export function DataManagement() {
                         This will overwrite all current data. This action cannot be undone.
                       </p>
                     </div>
+                  </div>
+
+                  <div className="mt-4 text-sm text-gray-500">
+                    <p>Supported file format: CSV</p>
+                    <p>Maximum file size: 5MB</p>
                   </div>
 
                   <button className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
