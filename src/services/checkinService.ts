@@ -1,6 +1,14 @@
 import { supabase } from '../lib/supabase';
 import { memberService, MemberWithStatus } from './memberService';
 
+export interface MemberValidationResult {
+  valid: boolean;
+  member?: MemberWithStatus;
+  message: string;
+  hasCheckedInToday?: boolean;
+  lastCheckInTime?: string;
+}
+
 export interface CheckInData {
   type: 'MEMBER' | 'COUPON' | 'WALK_IN';
   member_id?: string;
@@ -27,7 +35,7 @@ export interface CouponValidation {
 }
 
 class CheckInService {
-  async validateMemberAccess(memberIdString: string): Promise<{ valid: boolean; member?: MemberWithStatus; message: string }> {
+  async validateMemberAccess(memberIdString: string): Promise<MemberValidationResult> {
     try {
       const member = await memberService.getMemberByMemberId(memberIdString);
       
