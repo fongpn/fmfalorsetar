@@ -146,7 +146,7 @@ export function Shifts() {
                         <User className="h-4 w-4 mr-2" />
                         Staff Member
                       </div>
-                      <p className="font-semibold text-gray-900">{activeShift.starting_staff_profile?.full_name || 'Unknown'}</p>
+                      <p className="font-semibold text-gray-900">{activeShift.starting_staff_profile?.full_name || 'Loading...'}</p>
                     </div>
 
                     <div>

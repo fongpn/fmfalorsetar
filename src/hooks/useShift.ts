@@ -13,7 +13,10 @@ export function useShift() {
       
       const { data, error } = await supabase
         .from('shifts')
-        .select('*')
+        .select(`
+          *,
+          starting_staff_profile:profiles!shifts_starting_staff_id_fkey(full_name)
+        `)
         .eq('status', 'ACTIVE')
         .order('start_time', { ascending: false })
         .limit(1)
