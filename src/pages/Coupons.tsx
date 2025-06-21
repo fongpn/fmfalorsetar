@@ -127,7 +127,7 @@ export function Coupons() {
                 <Ticket className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">No coupon templates found</p>
                 <button className="mt-4 text-orange-600 hover:text-orange-700 underline">
-                  Create your first template
+                  Create your first coupon template
                 </button>
               </div>
             ) : (

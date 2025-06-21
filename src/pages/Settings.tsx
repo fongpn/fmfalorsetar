@@ -155,10 +155,10 @@ export function Settings() {
                   onChange={(e) => handleSettingChange('timezone', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
                 >
-                  <option value="America/New_York">Eastern Time</option>
-                  <option value="America/Chicago">Central Time</option>
-                  <option value="America/Denver">Mountain Time</option>
-                  <option value="America/Los_Angeles">Pacific Time</option>
+                  <option value="Asia/Kuala_Lumpur">Malaysia Time (GMT+8)</option>
+                  <option value="Asia/Singapore">Singapore Time (GMT+8)</option>
+                  <option value="Asia/Bangkok">Thailand Time (GMT+7)</option>
+                  <option value="Asia/Jakarta">Indonesia Time (GMT+7)</option>
                 </select>
               </div>
             </div>

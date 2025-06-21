@@ -135,7 +135,7 @@ export function DataManagement() {
 
                     <button className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700">
                       <Download className="h-4 w-4 mr-2" />
-                      Export {option.title}
+                      Export Data
                     </button>
                   </div>
                 </div>
