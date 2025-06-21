@@ -26,6 +26,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
   const [memberValidation, setMemberValidation] = useState<any>(null);
   const [memberSearchResults, setMemberSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false);
 
   // Coupon check-in state
   const [couponCodeInput, setCouponCodeInput] = useState('');
@@ -191,6 +192,12 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
   };
 
   const processCheckIn = async () => {
+    // Check for duplicate check-in confirmation
+    if (activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday && !showDuplicateConfirm) {
+      setShowDuplicateConfirm(true);
+      return;
+    }
+
     if (!activeShift) {
       setError('No active shift found. Please start a shift first.');
       return;
@@ -252,15 +259,18 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
       
       if (result.success) {
         setSuccess(result.message);
+        setShowDuplicateConfirm(false);
         setTimeout(() => {
           onSuccess();
           handleClose();
         }, 1500);
       } else {
         setError(result.message);
+        setShowDuplicateConfirm(false);
       }
     } catch (err: any) {
       setError(err.message);
+      setShowDuplicateConfirm(false);
     } finally {
       setLoading(false);
     }
@@ -430,6 +440,13 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                           {memberValidation.member.current_membership.plan.name} - 
                           Expires {new Date(memberValidation.member.current_membership.end_date).toLocaleDateString()}
                         </p>
+                      )}
+                      {memberValidation.hasCheckedInToday && (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                          <p className="text-xs text-amber-700 font-medium">
+                            ⚠️ Already checked in today at {new Date(memberValidation.lastCheckInTime).toLocaleTimeString()}
+                          </p>
+                        </div>
                       )}
                     </div>
                   )}

@@ -38,39 +38,64 @@ class CheckInService {
         };
       }
 
+      // Check if member has already checked in today
+      const today = new Date().toISOString().split('T')[0];
+      const { data: todayCheckIn, error: checkInError } = await supabase
+        .from('check_ins')
+        .select('id, check_in_time')
+        .eq('member_id', member.id)
+        .gte('check_in_time', today)
+        .lt('check_in_time', `${today}T23:59:59.999Z`)
+        .order('check_in_time', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (checkInError) {
+        console.warn('Error checking today\'s check-ins:', checkInError);
+      }
+
       switch (member.status) {
         case 'ACTIVE':
           return {
             valid: true,
             member,
-            message: `Welcome ${member.full_name}! Active membership.`
+            message: `Welcome ${member.full_name}! Active membership.`,
+            hasCheckedInToday: !!todayCheckIn,
+            lastCheckInTime: todayCheckIn?.check_in_time
           };
         
         case 'IN_GRACE':
           return {
             valid: true,
             member,
-            message: `Welcome ${member.full_name}! Membership in grace period - please renew soon.`
+            message: `Welcome ${member.full_name}! Membership in grace period - please renew soon.`,
+            hasCheckedInToday: !!todayCheckIn,
+            lastCheckInTime: todayCheckIn?.check_in_time
           };
         
         case 'EXPIRED':
           return {
             valid: false,
             member,
-            message: `Membership expired. Please renew to access the gym.`
+            message: `Membership expired. Please renew to access the gym.`,
+            hasCheckedInToday: !!todayCheckIn,
+            lastCheckInTime: todayCheckIn?.check_in_time
           };
         
         default:
           return {
             valid: false,
             member,
-            message: 'Unable to determine membership status.'
+            message: 'Unable to determine membership status.',
+            hasCheckedInToday: !!todayCheckIn,
+            lastCheckInTime: todayCheckIn?.check_in_time
           };
       }
     } catch (error: any) {
       return {
         valid: false,
-        message: `Error validating member: ${error.message}`
+        message: `Error validating member: ${error.message}`,
+        hasCheckedInToday: false
       };
     }
   }
