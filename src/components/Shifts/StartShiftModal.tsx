@@ -108,7 +108,6 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
               Starting Cash Float *
             </label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="number"
                 step="0.01"
@@ -116,7 +115,7 @@ export function StartShiftModal({ isOpen, onClose, onSuccess }: StartShiftModalP
                 value={cashFloat}
                 onChange={(e) => setCashFloat(parseFloat(e.target.value) || 0)}
                 placeholder="100.00"
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
                 required
               />
             </div>
