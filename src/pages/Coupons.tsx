@@ -422,6 +422,30 @@ export function Coupons() {
           coupon={selectedCoupon}
           onSuccess={() => {
             fetchData();
+            // Refresh the selected coupon data to show updated information
+            if (selectedCoupon) {
+              // Re-fetch the specific coupon to get updated data
+              const refreshCoupon = async () => {
+                try {
+                  const { data, error } = await supabase
+                    .from('sold_coupons')
+                    .select(`
+                      *,
+                      template:coupon_templates(name),
+                      member:members(full_name)
+                    `)
+                    .eq('id', selectedCoupon.id)
+                    .single();
+                  
+                  if (!error && data) {
+                    setSelectedCoupon(data);
+                  }
+                } catch (err) {
+                  console.error('Error refreshing coupon data:', err);
+                }
+              };
+              refreshCoupon();
+            }
           }}
         />
       </div>

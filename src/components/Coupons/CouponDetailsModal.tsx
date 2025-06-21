@@ -78,15 +78,29 @@ export function CouponDetailsModal({ isOpen, onClose, coupon, onSuccess }: Coupo
     setSuccess('');
 
     try {
+      // Prepare update data
+      const updateData: any = {
+        code: formData.code.trim(),
+        entries_remaining: formData.entries_remaining,
+        expiry_date: formData.expiry_date,
+        updated_at: new Date().toISOString()
+      };
+
+      // Handle member assignment
+      if (formData.member_id) {
+        updateData.member_id = formData.member_id;
+        updateData.customer_name = null; // Clear customer name if member is assigned
+      } else if (formData.customer_name.trim()) {
+        updateData.member_id = null;
+        updateData.customer_name = formData.customer_name.trim();
+      } else {
+        updateData.member_id = null;
+        updateData.customer_name = null;
+      }
+
       const { error: updateError } = await supabase
         .from('sold_coupons')
-        .update({
-          code: formData.code,
-          member_id: formData.member_id || null,
-          entries_remaining: formData.entries_remaining,
-          expiry_date: formData.expiry_date,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', coupon.id);
 
       if (updateError) throw updateError;
@@ -226,6 +240,7 @@ export function CouponDetailsModal({ isOpen, onClose, coupon, onSuccess }: Coupo
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
+                      setFormData(prev => ({ ...prev, customer_name: e.target.value }));
                       if (isEditing) {
                         setShowMemberSearch(true);
                         searchMembers(e.target.value);

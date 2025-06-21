@@ -17,6 +17,8 @@ This phase implements a comprehensive coupon details modal that allows viewing a
 - **Walk-in Customer Support**: Displays customer names for non-member purchases
 - **Fallback Display**: Shows "Walk-in customer" when no specific name is available
 - **Database Schema Update**: Added `customer_name` column to `sold_coupons` table
+- **Priority System**: Member names take priority over customer names when both exist
+- **Real-time Updates**: Changes reflect immediately in the interface after saving
 
 ### 3. Coupon Management Features
 - **Editable Fields**: Code, owner, entries remaining, and expiry date
@@ -40,6 +42,8 @@ This phase implements a comprehensive coupon details modal that allows viewing a
 3. **Edit Mode**: Enables field editing with save/cancel options
 4. **Member Search**: Real-time search with dropdown selection
 5. **Save Changes**: Updates database and refreshes parent view
+6. **Data Refresh**: Modal data updates to reflect saved changes
+7. **Success Feedback**: Clear confirmation of successful updates
 
 ### Status Calculation
 - **Active**: `entries_remaining > 0 && expiry_date > today`
@@ -63,6 +67,8 @@ ALTER TABLE sold_coupons ADD COLUMN customer_name text;
 - **Coupon Details**: Code, member assignment, entries, expiry date
 - **Customer Assignment**: Link/unlink members, update customer names
 - **Usage Tracking**: Modify remaining entries for corrections
+- **Data Consistency**: Ensures member assignments take priority over customer names
+- **Real-time Sync**: Updates reflect immediately across all views
 
 ## User Experience Features
 
@@ -78,6 +84,8 @@ ALTER TABLE sold_coupons ADD COLUMN customer_name text;
 3. **Member Search**: Type to search and select members for ownership
 4. **Save Changes**: Confirm updates with validation feedback
 5. **Auto-refresh**: Parent view updates automatically after changes
+6. **Live Updates**: Modal shows updated data immediately after save
+7. **Error Recovery**: Clear error messages with retry options
 
 ### Information Display
 - **Template Information**: Shows original coupon template details
@@ -92,6 +100,8 @@ ALTER TABLE sold_coupons ADD COLUMN customer_name text;
 - **Member Verification**: Real member search and selection
 - **Entry Limits**: Prevents negative or excessive entry counts
 - **Date Validation**: Ensures valid expiry dates
+- **Ownership Logic**: Proper handling of member vs customer name priority
+- **Data Integrity**: Maintains consistent ownership information
 
 ### Error Handling
 - **Database Errors**: Graceful handling of update failures
@@ -126,11 +136,29 @@ ALTER TABLE sold_coupons ADD COLUMN customer_name text;
 - **Search Optimization**: Debounced search to reduce API calls
 - **Memory Management**: Proper cleanup of search results
 - **Update Efficiency**: Targeted database updates only for changed fields
+- **Real-time Sync**: Efficient data refresh after successful updates
+- **Optimistic Updates**: UI updates immediately while database syncs
 
 ### Error Boundaries
 - **Component Isolation**: Modal errors don't affect parent components
 - **Graceful Degradation**: Fallback displays for missing data
 - **User Feedback**: Clear error messages with recovery options
 - **Data Consistency**: Maintains data integrity during failures
+
+## Bug Fixes Implemented
+
+### Save Functionality Issues
+- **Data Persistence**: Fixed coupon details not saving properly to database
+- **Field Updates**: Ensured all form fields update the underlying data model
+- **Customer Name Handling**: Proper synchronization between search input and form data
+- **Member Assignment**: Correct priority handling between member and customer names
+- **Real-time Refresh**: Modal data updates immediately after successful save
+
+### User Interface Improvements
+- **Input Synchronization**: Search field properly updates customer name in form data
+- **Visual Feedback**: Clear success/error messages for all operations
+- **Data Consistency**: Modal shows updated information after save operations
+- **Error Recovery**: Proper error handling with user-friendly messages
+- **State Management**: Consistent state updates across all form interactions
 
 This implementation provides a comprehensive coupon management interface that enhances the user experience while maintaining data integrity and providing clear ownership tracking for both member and walk-in customer purchases.
