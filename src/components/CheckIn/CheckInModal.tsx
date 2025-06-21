@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Ticket, DollarSign, Search, CheckCircle, AlertCircle, CreditCard, Smartphone, Banknote, QrCode } from 'lucide-react';
 import { checkinService, CheckInData } from '../../services/checkinService';
 import { memberService } from '../../services/memberService';
+import { supabase } from '../../lib/supabase';
 import { useShift } from '../../hooks/useShift';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -36,7 +37,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
   const [walkInType, setWalkInType] = useState<'ADULT' | 'STUDENT'>('ADULT');
   const [walkInNotes, setWalkInNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
-  const [walkInRates, setWalkInRates] = useState({ adult: 15.00, student: 8.00 });
+  const [walkInRates, setWalkInRates] = useState({ adult: 10.00, student: 8.00 });
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -82,25 +83,30 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
 
   const loadWalkInRates = async () => {
     try {
-      const { data: adultRateData } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'walk_in_rate')
-        .single();
-
-      const { data: studentRateData } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'walk_in_student_rate')
-        .single();
+      const [adultRateResult, studentRateResult] = await Promise.all([
+        supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'walk_in_rate')
+          .single(),
+        supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'walk_in_student_rate')
+          .single()
+      ]);
 
       setWalkInRates({
-        adult: parseFloat(adultRateData?.value || '15.00'),
-        student: parseFloat(studentRateData?.value || '8.00')
+        adult: parseFloat(adultRateResult.data?.value || '10.00'),
+        student: parseFloat(studentRateResult.data?.value || '8.00')
       });
     } catch (error) {
       console.warn('Failed to load walk-in rates:', error);
-      // Keep default values
+      // Use fallback values that match system defaults
+      setWalkInRates({
+        adult: 10.00,
+        student: 8.00
+      });
     }
   };
 
