@@ -8,6 +8,12 @@ export function DataManagement() {
   const [uploadMessage, setUploadMessage] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Reset upload status when changing tabs
+  React.useEffect(() => {
+    setUploadStatus('idle');
+    setUploadMessage('');
+  }, [activeTab]);
+
   const handleDownloadMemberTemplate = () => {
     // Define CSV headers
     const headers = [
@@ -52,6 +58,20 @@ export function DataManagement() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadStatus('error');
+      setUploadMessage('File size exceeds the 5MB limit. Please upload a smaller file.');
+      return;
+    }
+
+    // Check file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setUploadStatus('error');
+      setUploadMessage('Only CSV files are supported. Please upload a CSV file.');
+      return;
+    }
     
     // Here we would normally process the file
     // For now, just show a success message
@@ -66,6 +86,37 @@ export function DataManagement() {
 
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setUploadStatus('error');
+        setUploadMessage('File size exceeds the 5MB limit. Please upload a smaller file.');
+        return;
+      }
+      
+      // Check file type
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        setUploadStatus('error');
+        setUploadMessage('Only CSV files are supported. Please upload a CSV file.');
+        return;
+      }
+      
+      setUploadStatus('success');
+      setUploadMessage(`File "${file.name}" received. In a future update, you'll be able to preview and validate this data before importing.`);
+    }
   };
 
   const exportOptions = [
@@ -231,7 +282,11 @@ export function DataManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select CSV File
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <div 
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                  >
                     <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">
                       Drag and drop your CSV file here, or
@@ -351,7 +406,11 @@ export function DataManagement() {
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
                       {uploadStatus === 'idle' ? (
                         <>
-                          <div className="flex justify-center">
+                          <div 
+                            className="flex justify-center"
+                            onDragOver={handleDragOver}
+                            onDrop={handleDrop}
+                          >
                             <Upload className="h-8 w-8 text-gray-400 mb-2" />
                           </div>
                           <div className="text-sm text-gray-600">
