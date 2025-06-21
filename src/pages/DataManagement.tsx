@@ -1,9 +1,51 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout/Layout';
-import { Download, Upload, Database, FileText, Calendar, AlertTriangle } from 'lucide-react';
+import { Download, Upload, Database, FileText, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export function DataManagement() {
   const [activeTab, setActiveTab] = useState<'export' | 'import' | 'backup'>('export');
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [uploadMessage, setUploadMessage] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleDownloadMemberTemplate = () => {
+    // Define CSV headers
+    const headers = ['Member ID', 'Full Name', 'IC/Passport Number', 'Phone Number'];
+    
+    // Create CSV content
+    const csvContent = headers.join(',') + '\n';
+    
+    // Create a blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'members_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Here we would normally process the file
+    // For now, just show a success message
+    setUploadStatus('success');
+    setUploadMessage(`File "${file.name}" received. In a future update, you'll be able to preview and validate this data before importing.`);
+    
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const exportOptions = [
     {
@@ -226,13 +268,52 @@ export function DataManagement() {
                     <label className="flex items-center">
                       <input type="checkbox" className="rounded border-gray-300 text-orange-600 focus:ring-orange-500" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Include system settings</span>
-                    </label>
-                  </div>
-
-                  <button className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-                    <Database className="h-4 w-4 mr-2" />
-                    Create Backup
-                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".csv"
+                    className="hidden"
+                  />
+                  {uploadStatus === 'idle' ? (
+                    <>
+                      <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">
+                        Drag and drop your CSV file here, or{' '}
+                        <button 
+                          type="button"
+                          onClick={handleBrowseClick}
+                          className="text-orange-600 hover:text-orange-700 underline"
+                        >
+                          browse to upload
+                        </button>
+                      </p>
+                    </>
+                  ) : uploadStatus === 'success' ? (
+                    <div className="flex flex-col items-center">
+                      <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                      <p className="text-sm text-green-600">{uploadMessage}</p>
+                      <button
+                        type="button"
+                        onClick={() => setUploadStatus('idle')}
+                        className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
+                      >
+                        Upload another file
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                      <p className="text-sm text-red-600">{uploadMessage}</p>
+                      <button
+                        type="button"
+                        onClick={() => setUploadStatus('idle')}
+                        className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -271,12 +352,14 @@ export function DataManagement() {
                   <button className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
                     <Upload className="h-4 w-4 mr-2" />
                     Restore Backup
-                  </button>
+                  onClick={handleDownloadMemberTemplate}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
                 </div>
               </div>
             </div>
 
             {/* Recent Backups */}
+                  disabled={uploadStatus !== 'success'}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Backups</h3>
               <div className="text-center py-8">
