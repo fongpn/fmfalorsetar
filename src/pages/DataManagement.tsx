@@ -245,7 +245,10 @@ export function DataManagement() {
                 <div className="flex items-center space-x-4">
                   <button
                     onClick={handleDownloadMemberTemplate}
-                    className="flex items-center px-3 sm:px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
+                    className="flex items-center px-3 sm:px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Template
+                  </button>
                   <div className="hidden sm:block">
                     <button
                       type="button"
