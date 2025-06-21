@@ -11,7 +11,7 @@ interface CheckInModalProps {
   onSuccess: () => void;
 }
 
-type CheckInType = 'MEMBER' | 'COUPON' | 'WALK_IN' | 'WALK_IN_STUDENT';
+type CheckInType = 'MEMBER' | 'COUPON' | 'WALK_IN';
 
 export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) {
   const [activeTab, setActiveTab] = useState<CheckInType>('MEMBER');
@@ -33,8 +33,8 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
   const [couponValidation, setCouponValidation] = useState<any>(null);
 
   // Walk-in state
+  const [walkInType, setWalkInType] = useState<'ADULT' | 'STUDENT'>('ADULT');
   const [walkInNotes, setWalkInNotes] = useState('');
-  const [studentNotes, setStudentNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
 
   // Handle keyboard shortcuts
@@ -84,8 +84,8 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
     setCouponValidation(null);
     
     // Clear walk-in tab inputs
+    setWalkInType('ADULT');
     setWalkInNotes('');
-    setStudentNotes('');
     setPaymentMethod('CASH');
     
     // Clear error messages
@@ -247,19 +247,10 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
 
         case 'WALK_IN':
           checkInData = {
-            type: 'WALK_IN',
+            type: walkInType === 'STUDENT' ? 'WALK_IN_STUDENT' : 'WALK_IN',
             shift_id: activeShift.id,
             processed_by: profile.id,
-            notes: walkInNotes
-          };
-          break;
-        
-        case 'WALK_IN_STUDENT':
-          checkInData = {
-            type: 'WALK_IN_STUDENT',
-            shift_id: activeShift.id,
-            processed_by: profile.id,
-            notes: studentNotes
+            notes: walkInType === 'STUDENT' ? `Student: ${walkInNotes}` : walkInNotes
           };
           break;
 
@@ -294,7 +285,6 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
     { id: 'MEMBER', label: 'Member', icon: User },
     { id: 'COUPON', label: 'Coupon', icon: Ticket },
     { id: 'WALK_IN', label: 'Walk-in', icon: DollarSign },
-    { id: 'WALK_IN_STUDENT', label: 'Student', icon: DollarSign },
   ];
 
   return (
@@ -538,10 +528,51 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
           {/* Walk-in Check-in */}
           {activeTab === 'WALK_IN' && (
             <div className="space-y-4">
+              {/* Walk-in Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Customer Type *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setWalkInType('ADULT')}
+                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                      walkInType === 'ADULT'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <User className="h-6 w-6 mb-2" />
+                    <span className="text-sm font-medium">Adult</span>
+                    <span className="text-xs text-gray-500">Regular Rate</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setWalkInType('STUDENT')}
+                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                      walkInType === 'STUDENT'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <User className="h-6 w-6 mb-2" />
+                    <span className="text-sm font-medium">Student</span>
+                    <span className="text-xs text-gray-500">Discounted Rate</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Walk-in Rate</h4>
+                <h4 className="font-medium text-blue-900 mb-2">
+                  {walkInType === 'STUDENT' ? 'Student Walk-in Rate' : 'Walk-in Rate'}
+                </h4>
                 <p className="text-sm text-blue-700">
-                  Daily gym access fee will be charged according to system settings.
+                  {walkInType === 'STUDENT' 
+                    ? 'Discounted daily gym access fee for students according to system settings.'
+                    : 'Daily gym access fee will be charged according to system settings.'
+                  }
                 </p>
               </div>
 
@@ -555,7 +586,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                     onClick={() => setPaymentMethod('CASH')}
                     className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
                       paymentMethod === 'CASH'
-                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        ? `border-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-500 bg-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-50 text-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-700`
                         : 'border-gray-200 hover:border-gray-300 text-gray-600'
                     }`}
                   >
@@ -568,7 +599,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                     onClick={() => setPaymentMethod('QR')}
                     className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
                       paymentMethod === 'QR'
-                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        ? `border-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-500 bg-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-50 text-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-700`
                         : 'border-gray-200 hover:border-gray-300 text-gray-600'
                     }`}
                   >
@@ -581,7 +612,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                     onClick={() => setPaymentMethod('BANK_TRANSFER')}
                     className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
                       paymentMethod === 'BANK_TRANSFER'
-                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        ? `border-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-500 bg-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-50 text-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-700`
                         : 'border-gray-200 hover:border-gray-300 text-gray-600'
                     }`}
                   >
@@ -593,14 +624,14 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Customer's Name (Optional)
+                  {walkInType === 'STUDENT' ? "Student's Name (Optional)" : "Customer's Name (Optional)"}
                 </label>
                 <input
                   type="text"
                   value={walkInNotes}
                   onChange={(e) => setWalkInNotes(e.target.value)}
-                  placeholder="Enter customer's name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  placeholder={walkInType === 'STUDENT' ? "Enter student's name" : "Enter customer's name"}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-500 focus:border-${walkInType === 'STUDENT' ? 'blue' : 'orange'}-500`}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -612,82 +643,6 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
             </div>
           )}
 
-          {/* Student Walk-in Check-in */}
-          {activeTab === 'WALK_IN_STUDENT' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Student Walk-in Rate</h4>
-                <p className="text-sm text-blue-700">
-                  Discounted daily gym access fee for students according to system settings.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Payment Method *
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('CASH')}
-                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                      paymentMethod === 'CASH'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <Banknote className="h-6 w-6 mb-2" />
-                    <span className="text-sm font-medium">Cash</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('QR')}
-                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                      paymentMethod === 'QR'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <QrCode className="h-6 w-6 mb-2" />
-                    <span className="text-sm font-medium">QR</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('BANK_TRANSFER')}
-                    className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
-                      paymentMethod === 'BANK_TRANSFER'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <Smartphone className="h-6 w-6 mb-2" />
-                    <span className="text-sm font-medium">Bank Transfer</span>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Student's Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={studentNotes}
-                  onChange={(e) => setStudentNotes(e.target.value)}
-                  placeholder="Enter student's name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      processCheckIn();
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          )}
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-6">
             <button
@@ -705,9 +660,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
               className={`px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 flex items-center ${
                 activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday
                   ? 'bg-amber-600 hover:bg-amber-700'
-                  : activeTab === 'WALK_IN_STUDENT'
-                  ? 'bg-blue-600 hover:bg-blue-700'
-                  : 'bg-orange-600 hover:bg-orange-700'
+                  : (activeTab === 'WALK_IN' && walkInType === 'STUDENT') ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'
               }`}
             >
               {loading ? 'Processing...' : 
@@ -716,9 +669,7 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
                 <kbd className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
                   activeTab === 'MEMBER' && memberValidation?.hasCheckedInToday
                     ? 'bg-amber-700'
-                    : activeTab === 'WALK_IN_STUDENT'
-                    ? 'bg-blue-700'
-                    : 'bg-orange-700'
+                    : (activeTab === 'WALK_IN' && walkInType === 'STUDENT') ? 'bg-blue-700' : 'bg-orange-700'
                 }`}>↵</kbd>
               )}
             </button>
