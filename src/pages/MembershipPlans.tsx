@@ -47,7 +47,7 @@ export function MembershipPlans() {
           </div>
           <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700">
             <Plus className="h-4 w-4 mr-2" />
-            Add Plan
+            New Plan
           </button>
         </div>
 
@@ -127,7 +127,7 @@ export function MembershipPlans() {
             <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">No membership plans found</p>
             <button className="mt-4 text-orange-600 hover:text-orange-700 underline">
-              Create your first plan
+              Create your first membership plan
             </button>
           </div>
         )}

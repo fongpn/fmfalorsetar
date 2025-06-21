@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -33,6 +33,7 @@ const navigation = [
 
 export function Sidebar() {
   const { signOut, profile } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
@@ -63,6 +64,10 @@ export function Sidebar() {
           <NavLink
             key={item.name}
             to={item.href}
+            onClick={(e) => {
+              // Ensure navigation works properly
+              navigate(item.href);
+            }}
             className={({ isActive }) =>
               `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive

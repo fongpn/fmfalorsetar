@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout/Layout';
 import { supabase } from '../lib/supabase';
 import { memberService } from '../services/memberService';
@@ -16,6 +17,7 @@ interface DashboardStats {
 }
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     activeMembers: 0,
     todayRevenue: 0,
@@ -196,19 +198,31 @@ export function Dashboard() {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button className="flex items-center justify-center px-4 py-3 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors">
+            <button 
+              onClick={() => navigate('/members')}
+              className="flex items-center justify-center px-4 py-3 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors"
+            >
               <Users className="h-5 w-5 mr-2" />
               New Member
             </button>
-            <button className="flex items-center justify-center px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
+            <button 
+              onClick={() => navigate('/pos')}
+              className="flex items-center justify-center px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+            >
               <CreditCard className="h-5 w-5 mr-2" />
               Process Payment
             </button>
-            <button className="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors">
+            <button 
+              onClick={() => navigate('/shifts')}
+              className="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
+            >
               <Clock className="h-5 w-5 mr-2" />
               Start Shift
             </button>
-            <button className="flex items-center justify-center px-4 py-3 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors">
+            <button 
+              onClick={() => navigate('/data')}
+              className="flex items-center justify-center px-4 py-3 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
+            >
               <TrendingUp className="h-5 w-5 mr-2" />
               View Reports
             </button>
