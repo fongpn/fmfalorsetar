@@ -96,13 +96,24 @@ export function CheckInModal({ isOpen, onClose, onSuccess }: CheckInModalProps) 
           .single()
       ]);
 
+      if (adultRateResult.error) {
+        console.warn('Failed to load adult walk-in rate:', adultRateResult.error);
+      }
+      if (studentRateResult.error) {
+        console.warn('Failed to load student walk-in rate:', studentRateResult.error);
+      }
+
       setWalkInRates({
-        adult: parseFloat(adultRateResult.data?.value || '10.00'),
-        student: parseFloat(studentRateResult.data?.value || '8.00')
+        adult: adultRateResult.data && !adultRateResult.error 
+          ? parseFloat(adultRateResult.data.value) 
+          : 10.00,
+        student: studentRateResult.data && !studentRateResult.error 
+          ? parseFloat(studentRateResult.data.value) 
+          : 8.00
       });
     } catch (error) {
       console.warn('Failed to load walk-in rates:', error);
-      // Use fallback values that match system defaults
+      // Use fallback values only if database query completely fails
       setWalkInRates({
         adult: 10.00,
         student: 8.00
