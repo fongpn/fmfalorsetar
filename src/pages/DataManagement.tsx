@@ -10,13 +10,34 @@ export function DataManagement() {
 
   const handleDownloadMemberTemplate = () => {
     // Define CSV headers
-    const headers = ['Member ID', 'Full Name', 'IC/Passport Number', 'Phone Number'];
+    const headers = [
+      'Member ID', 
+      'Full Name', 
+      'IC/Passport Number', 
+      'Phone Number', 
+      'Membership Plan Name',
+      'Membership Start Date',
+      'Membership End Date'
+    ];
     
     // Create CSV content
     const csvContent = headers.join(',') + '\n';
     
+    // Add example row to help users understand the format
+    const exampleRow = [
+      '0001',
+      'John Doe',
+      '123456-78-9012',
+      '012-3456789',
+      'Monthly',
+      '2025-06-01',
+      '2025-07-01'
+    ].join(',');
+    
+    const csvWithExample = csvContent + exampleRow + '\n';
+    
     // Create a blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvWithExample], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -222,7 +243,10 @@ export function DataManagement() {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                  <button className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100">
+                  <button
+                    onClick={handleDownloadMemberTemplate}
+                    className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Download Template
                   </button>
@@ -270,52 +294,11 @@ export function DataManagement() {
                       <span className="ml-2 text-sm text-gray-700">Include system settings</span>
                     </label>
                   </div>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept=".csv"
-                    className="hidden"
-                  />
-                  {uploadStatus === 'idle' ? (
-                    <>
-                      <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">
-                        Drag and drop your CSV file here, or{' '}
-                        <button 
-                          type="button"
-                          onClick={handleBrowseClick}
-                          className="text-orange-600 hover:text-orange-700 underline"
-                        >
-                          browse to upload
-                        </button>
-                      </p>
-                    </>
-                  ) : uploadStatus === 'success' ? (
-                    <div className="flex flex-col items-center">
-                      <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                      <p className="text-sm text-green-600">{uploadMessage}</p>
-                      <button
-                        type="button"
-                        onClick={() => setUploadStatus('idle')}
-                        className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
-                      >
-                        Upload another file
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center">
-                      <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                      <p className="text-sm text-red-600">{uploadMessage}</p>
-                      <button
-                        type="button"
-                        onClick={() => setUploadStatus('idle')}
-                        className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
-                      >
-                        Try again
-                      </button>
-                    </div>
-                  )}
+
+                  <button className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                    <Database className="h-4 w-4 mr-2" />
+                    Create Backup
+                  </button>
                 </div>
               </div>
 
@@ -337,9 +320,52 @@ export function DataManagement() {
                     </label>
                     <input
                       type="file"
-                      accept=".sql,.zip"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-orange-500 focus:border-orange-500"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept=".csv"
+                      className="hidden"
                     />
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      {uploadStatus === 'idle' ? (
+                        <>
+                          <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">
+                            Drag and drop your CSV file here, or{' '}
+                            <button 
+                              type="button"
+                              onClick={handleBrowseClick}
+                              className="text-orange-600 hover:text-orange-700 underline"
+                            >
+                              browse to upload
+                            </button>
+                          </p>
+                        </>
+                      ) : uploadStatus === 'success' ? (
+                        <div className="flex flex-col items-center">
+                          <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                          <p className="text-sm text-green-600">{uploadMessage}</p>
+                          <button
+                            type="button"
+                            onClick={() => setUploadStatus('idle')}
+                            className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
+                          >
+                            Upload another file
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                          <p className="text-sm text-red-600">{uploadMessage}</p>
+                          <button
+                            type="button"
+                            onClick={() => setUploadStatus('idle')}
+                            className="mt-3 text-sm text-orange-600 hover:text-orange-700 underline"
+                          >
+                            Try again
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="bg-red-50 border border-red-200 rounded-md p-3">
@@ -354,13 +380,6 @@ export function DataManagement() {
                   <button className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
                     <Upload className="h-4 w-4 mr-2" />
                     Restore Backup
-                  </button>
-                  <button
-                    onClick={handleDownloadMemberTemplate}
-                    className="flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
-                    disabled={uploadStatus !== 'success'}
-                  >
-                    Download Template
                   </button>
                 </div>
               </div>
