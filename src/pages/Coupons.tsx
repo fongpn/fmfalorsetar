@@ -6,6 +6,8 @@ import { SellCouponModal } from '../components/Coupons/SellCouponModal';
 import { CouponDetailsModal } from '../components/Coupons/CouponDetailsModal';
 import { Plus, Search, Ticket, Calendar, Users, DollarSign, Trash2, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Pagination } from '../components/Common/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 export function Coupons() {
   const [activeTab, setActiveTab] = useState<'templates' | 'sold'>('sold');
@@ -98,6 +100,46 @@ export function Coupons() {
       setDeleting(null);
     }
   };
+
+  // Filter coupons based on search query
+  const filteredSoldCoupons = soldCoupons.filter(coupon =>
+    coupon.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    coupon.template?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (coupon.member?.full_name && coupon.member.full_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (coupon.customer_name && coupon.customer_name.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredTemplates = templates.filter(template =>
+    template.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Pagination for sold coupons
+  const {
+    currentPage: soldCouponsPage,
+    totalPages: soldCouponsTotalPages,
+    totalItems: soldCouponsTotalItems,
+    itemsPerPage: soldCouponsItemsPerPage,
+    paginatedData: paginatedSoldCoupons,
+    goToPage: goToSoldCouponsPage,
+    setItemsPerPage: setSoldCouponsItemsPerPage
+  } = usePagination({
+    data: filteredSoldCoupons,
+    itemsPerPage: 25
+  });
+
+  // Pagination for templates
+  const {
+    currentPage: templatesPage,
+    totalPages: templatesTotalPages,
+    totalItems: templatesTotalItems,
+    itemsPerPage: templatesItemsPerPage,
+    paginatedData: paginatedTemplates,
+    goToPage: goToTemplatesPage,
+    setItemsPerPage: setTemplatesItemsPerPage
+  } = usePagination({
+    data: filteredTemplates,
+    itemsPerPage: 12
+  });
 
   const handleCouponClick = (coupon: any) => {
     setSelectedCoupon(coupon);
@@ -205,73 +247,88 @@ export function Coupons() {
         {/* Sold Coupons Tab */}
         {(activeTab === 'sold' || profile?.role === 'CS') && (
           <>
-            {soldCoupons.length === 0 ? (
+            {filteredSoldCoupons.length === 0 ? (
               <div className="text-center py-12">
                 <Ticket className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No sold coupons found</p>
+                <p className="text-gray-500">
+                  {searchQuery ? 'No coupons found matching your search.' : 'No sold coupons found'}
+                </p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Coupon
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Member
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Entries
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Expiry
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {soldCoupons.map((coupon) => (
-                        <tr 
-                          key={coupon.id} 
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleCouponClick(coupon)}
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{coupon.code}</div>
-                              <div className="text-sm text-gray-500">{coupon.template?.name}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {coupon.member?.full_name || coupon.customer_name || 'No member'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{coupon.entries_remaining} remaining</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{new Date(coupon.expiry_date).toLocaleDateString()}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              coupon.entries_remaining > 0 && new Date(coupon.expiry_date) > new Date()
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {coupon.entries_remaining > 0 && new Date(coupon.expiry_date) > new Date() ? 'Active' : 'Expired'}
-                            </span>
-                          </td>
+              <>
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Coupon
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Member
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Entries
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Expiry
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {paginatedSoldCoupons.map((coupon) => (
+                          <tr 
+                            key={coupon.id} 
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => handleCouponClick(coupon)}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{coupon.code}</div>
+                                <div className="text-sm text-gray-500">{coupon.template?.name}</div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {coupon.member?.full_name || coupon.customer_name || 'No member'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{coupon.entries_remaining} remaining</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{new Date(coupon.expiry_date).toLocaleDateString()}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                coupon.entries_remaining > 0 && new Date(coupon.expiry_date) > new Date()
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {coupon.entries_remaining > 0 && new Date(coupon.expiry_date) > new Date() ? 'Active' : 'Expired'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+                
+                {/* Pagination for Sold Coupons */}
+                <Pagination
+                  currentPage={soldCouponsPage}
+                  totalPages={soldCouponsTotalPages}
+                  totalItems={soldCouponsTotalItems}
+                  itemsPerPage={soldCouponsItemsPerPage}
+                  onPageChange={goToSoldCouponsPage}
+                  onPageSizeChange={setSoldCouponsItemsPerPage}
+                  pageSizeOptions={[25, 50, 100]}
+                />
+              </>
             )}
           </>
         )}
@@ -279,68 +336,88 @@ export function Coupons() {
         {/* Coupons Tab (formerly Templates) */}
         {activeTab === 'templates' && profile?.role === 'ADMIN' && (
           <>
-            {templates.length === 0 ? (
+            {filteredTemplates.length === 0 ? (
               <div className="text-center py-12">
                 <Ticket className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No coupon templates found</p>
-                <button className="mt-4 text-orange-600 hover:text-orange-700 underline">
-                  Create your first coupon template
-                </button>
+                <p className="text-gray-500">
+                  {searchQuery ? 'No templates found matching your search.' : 'No coupon templates found'}
+                </p>
+                {!searchQuery && (
+                  <button 
+                    onClick={() => setShowNewTemplateModal(true)}
+                    className="mt-4 text-orange-600 hover:text-orange-700 underline"
+                  >
+                    Create your first coupon template
+                  </button>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {templates.map((template) => (
-                  <div key={template.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow relative group">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <Ticket className="h-6 w-6 text-purple-600" />
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {paginatedTemplates.map((template) => (
+                    <div key={template.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow relative group">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center">
+                          <div className="p-2 bg-purple-100 rounded-lg">
+                            <Ticket className="h-6 w-6 text-purple-600" />
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
+                            <p className="text-2xl font-bold text-purple-600">RM{template.price}</p>
+                          </div>
                         </div>
-                        <div className="ml-3">
-                          <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
-                          <p className="text-2xl font-bold text-purple-600">RM{template.price}</p>
+                        
+                        {/* Delete Button - Shows on hover */}
+                        <button
+                          onClick={() => setDeleteConfirm({ isOpen: true, template })}
+                          disabled={deleting === template.id}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full disabled:opacity-50"
+                          title="Delete template"
+                        >
+                          {deleting === template.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Users className="h-4 w-4 mr-2" />
+                          <span>{template.max_entries} entries</span>
+                        </div>
+
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          <span>{template.duration_days} days validity</span>
+                        </div>
+
+                        <div className="pt-3 border-t border-gray-200">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            template.is_active 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {template.is_active ? 'Active' : 'Inactive'}
+                          </span>
                         </div>
                       </div>
-                      
-                      {/* Delete Button - Shows on hover */}
-                      <button
-                        onClick={() => setDeleteConfirm({ isOpen: true, template })}
-                        disabled={deleting === template.id}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full disabled:opacity-50"
-                        title="Delete template"
-                      >
-                        {deleting === template.id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
                     </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Users className="h-4 w-4 mr-2" />
-                        <span>{template.max_entries} entries</span>
-                      </div>
-
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        <span>{template.duration_days} days validity</span>
-                      </div>
-
-                      <div className="pt-3 border-t border-gray-200">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          template.is_active 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {template.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                
+                {/* Pagination for Templates */}
+                <Pagination
+                  currentPage={templatesPage}
+                  totalPages={templatesTotalPages}
+                  totalItems={templatesTotalItems}
+                  itemsPerPage={templatesItemsPerPage}
+                  onPageChange={goToTemplatesPage}
+                  onPageSizeChange={setTemplatesItemsPerPage}
+                  pageSizeOptions={[12, 24, 48]}
+                />
+              </>
             )}
           </>
         )}

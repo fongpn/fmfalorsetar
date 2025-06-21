@@ -6,6 +6,8 @@ import { useMembers } from '../hooks/useMembers';
 import { MemberCard } from '../components/Members/MemberCard';
 import { NewMemberModal } from '../components/Members/NewMemberModal';
 import { MemberProfileModal } from '../components/Members/MemberProfileModal';
+import { Pagination } from '../components/Common/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import { MemberWithStatus } from '../services/memberService';
 
 
@@ -17,6 +19,20 @@ export function Members() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<MemberWithStatus | null>(null);
   const { members, loading, error, searchMembers, refreshMembers } = useMembers();
+
+  // Pagination setup
+  const {
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    paginatedData: paginatedMembers,
+    goToPage,
+    setItemsPerPage
+  } = usePagination({
+    data: filteredMembers,
+    itemsPerPage: 12
+  });
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -153,7 +169,7 @@ export function Members() {
                   ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
                   : 'space-y-4'
               }>
-                {filteredMembers.map((member) => (
+                {paginatedMembers.map((member) => (
                   <MemberCard 
                     key={member.id} 
                     member={member}
@@ -163,11 +179,17 @@ export function Members() {
               </div>
             )}
 
-            {/* Results Summary */}
-            {filteredMembers.length > 0 && (
-              <div className="text-center text-sm text-gray-500">
-                Showing {filteredMembers.length} of {members.length} members
-              </div>
+            {/* Pagination */}
+            {totalItems > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={goToPage}
+                onPageSizeChange={setItemsPerPage}
+                pageSizeOptions={[12, 24, 48, 96]}
+              />
             )}
           </>
         )}

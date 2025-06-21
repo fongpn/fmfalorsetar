@@ -7,6 +7,8 @@ import { EditProductModal } from '../components/Products/EditProductModal.tsx';
 import { posService } from '../services/posService';
 import { Product } from '../lib/supabase';
 import { Search, Plus, Package, AlertTriangle, TrendingUp, Edit, Trash2 } from 'lucide-react';
+import { Pagination } from '../components/Common/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 export function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -109,6 +111,20 @@ export function Products() {
   };
 
   const filterCounts = getFilterCounts();
+
+  // Pagination setup
+  const {
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    paginatedData: paginatedProducts,
+    goToPage,
+    setItemsPerPage
+  } = usePagination({
+    data: filteredProducts,
+    itemsPerPage: 25
+  });
 
   return (
     <Layout title="Products & Inventory" subtitle="Manage products and track inventory levels">
@@ -237,7 +253,7 @@ export function Products() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredProducts.map((product) => {
+                      {paginatedProducts.map((product) => {
                         const stockStatus = getStockStatus(product.current_stock);
                         return (
                           <tr key={product.id} className="hover:bg-gray-50">
@@ -315,14 +331,19 @@ export function Products() {
                   </table>
                 </div>
               </div>
+              
+              {/* Pagination */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={goToPage}
+                onPageSizeChange={setItemsPerPage}
+                pageSizeOptions={[25, 50, 100]}
+              />
             )}
 
-            {/* Results Summary */}
-            {filteredProducts.length > 0 && (
-              <div className="text-center text-sm text-gray-500">
-                Showing {filteredProducts.length} of {products.length} products
-              </div>
-            )}
           </>
         )}
 
